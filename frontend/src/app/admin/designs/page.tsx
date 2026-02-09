@@ -1,0 +1,531 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  getDesigns,
+  createDesign,
+  updateDesign,
+  deleteDesign,
+  uploadFile,
+  previewPdf,
+  extractPdfPages,
+  DesignWork,
+  PdfPage,
+} from "@/lib/admin-api";
+
+const CATEGORIES = ["logo", "branding", "ui", "print", "other"];
+
+interface DesignFormData {
+  title: string;
+  description: string;
+  category: string;
+  images: string[];
+  primary_image: number;
+  client: string;
+  year: string;
+  featured: boolean;
+  order: number;
+}
+
+const emptyForm: DesignFormData = {
+  title: "",
+  description: "",
+  category: "logo",
+  images: [],
+  primary_image: 0,
+  client: "",
+  year: new Date().getFullYear().toString(),
+  featured: false,
+  order: 0,
+};
+
+export default function DesignsPage() {
+  const [designs, setDesigns] = useState<DesignWork[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<DesignFormData>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // PDF state
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfPages, setPdfPages] = useState<PdfPage[]>([]);
+  const [selectedPages, setSelectedPages] = useState<number[]>([]);
+  const [processingPdf, setProcessingPdf] = useState(false);
+
+  const fetchDesigns = async () => {
+    try {
+      const data = await getDesigns();
+      setDesigns(data);
+    } catch (error) {
+      console.error("Failed to fetch designs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDesigns();
+  }, []);
+
+  const handleEdit = (design: DesignWork) => {
+    setForm({
+      title: design.title,
+      description: design.description || "",
+      category: design.category,
+      images: design.images,
+      primary_image: design.primary_image || 0,
+      client: design.client || "",
+      year: design.year?.toString() || "",
+      featured: design.featured,
+      order: design.order,
+    });
+    setEditingId(design.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this design?")) return;
+
+    try {
+      await deleteDesign(id);
+      await fetchDesigns();
+    } catch (error) {
+      console.error("Failed to delete design:", error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    const designData = {
+      title: form.title,
+      description: form.description || null,
+      category: form.category,
+      images: form.images,
+      primary_image: form.primary_image,
+      client: form.client || null,
+      year: form.year ? parseInt(form.year) : null,
+      featured: form.featured,
+      order: form.order,
+    };
+
+    try {
+      if (editingId) {
+        await updateDesign(editingId, designData);
+      } else {
+        await createDesign(designData);
+      }
+      await fetchDesigns();
+      setShowForm(false);
+      setEditingId(null);
+      setForm(emptyForm);
+    } catch (error) {
+      console.error("Failed to save design:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+
+    setUploading(true);
+    try {
+      const uploadPromises = Array.from(files).map((file) => uploadFile(file));
+      const results = await Promise.all(uploadPromises);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const newUrls = results.map((r) =>
+        r.url.startsWith("http") ? r.url : `${apiUrl}${r.url}`
+      );
+      setForm({ ...form, images: [...form.images, ...newUrls] });
+    } catch (error) {
+      console.error("Failed to upload images:", error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePdfSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.name.toLowerCase().endsWith(".pdf")) return;
+
+    setPdfFile(file);
+    setProcessingPdf(true);
+    setShowPdfModal(true);
+    setSelectedPages([]);
+
+    try {
+      const result = await previewPdf(file);
+      setPdfPages(result.pages);
+    } catch (error) {
+      console.error("Failed to preview PDF:", error);
+      alert("Failed to process PDF");
+      setShowPdfModal(false);
+    } finally {
+      setProcessingPdf(false);
+    }
+  };
+
+  const togglePageSelection = (pageNum: number) => {
+    setSelectedPages((prev) =>
+      prev.includes(pageNum)
+        ? prev.filter((p) => p !== pageNum)
+        : [...prev, pageNum]
+    );
+  };
+
+  const handleExtractPages = async () => {
+    if (!pdfFile || selectedPages.length === 0) return;
+
+    setProcessingPdf(true);
+    try {
+      const result = await extractPdfPages(pdfFile, selectedPages);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const newUrls = result.images.map((img) =>
+        img.url.startsWith("http") ? img.url : `${apiUrl}${img.url}`
+      );
+      setForm({ ...form, images: [...form.images, ...newUrls] });
+      setShowPdfModal(false);
+      setPdfFile(null);
+      setPdfPages([]);
+      setSelectedPages([]);
+    } catch (error) {
+      console.error("Failed to extract pages:", error);
+      alert("Failed to extract pages");
+    } finally {
+      setProcessingPdf(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = form.images.filter((_, i) => i !== index);
+    setForm({
+      ...form,
+      images: newImages,
+      primary_image: form.primary_image >= newImages.length ? 0 : form.primary_image,
+    });
+  };
+
+  const setPrimaryImage = (index: number) => {
+    setForm({ ...form, primary_image: index });
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Designs</h1>
+        <button
+          onClick={() => {
+            setForm(emptyForm);
+            setEditingId(null);
+            setShowForm(true);
+          }}
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+        >
+          Add Design
+        </button>
+      </div>
+
+      {/* PDF Modal */}
+      {showPdfModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                Select Pages to Extract
+              </h2>
+              <button
+                onClick={() => {
+                  setShowPdfModal(false);
+                  setPdfFile(null);
+                  setPdfPages([]);
+                  setSelectedPages([]);
+                }}
+                className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              >
+                &times;
+              </button>
+            </div>
+
+            {processingPdf && pdfPages.length === 0 ? (
+              <p className="text-center py-8 text-zinc-500">Processing PDF...</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 mb-6">
+                  {pdfPages.map((page) => (
+                    <button
+                      key={page.page}
+                      onClick={() => togglePageSelection(page.page)}
+                      className={`relative aspect-[3/4] rounded-lg overflow-hidden border-2 transition-colors ${
+                        selectedPages.includes(page.page)
+                          ? "border-purple-500"
+                          : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                      }`}
+                    >
+                      <img
+                        src={page.preview}
+                        alt={`Page ${page.page + 1}`}
+                        className="w-full h-full object-contain bg-zinc-100 dark:bg-zinc-900"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
+                        Page {page.page + 1}
+                      </div>
+                      {selectedPages.includes(page.page) && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
+                          ✓
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-zinc-500">
+                    {selectedPages.length} page(s) selected
+                  </p>
+                  <button
+                    onClick={handleExtractPages}
+                    disabled={selectedPages.length === 0 || processingPdf}
+                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {processingPdf ? "Extracting..." : "Extract Selected Pages"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6">
+              {editingId ? "Edit Design" : "New Design"}
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Year
+                  </label>
+                  <input
+                    type="number"
+                    value={form.year}
+                    onChange={(e) => setForm({ ...form, year: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Client
+                </label>
+                <input
+                  type="text"
+                  value={form.client}
+                  onChange={(e) => setForm({ ...form, client: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Images {form.images.length > 0 && <span className="text-zinc-500">(click to set as thumbnail)</span>}
+                </label>
+
+                {/* Image grid */}
+                {form.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {form.images.map((url, index) => (
+                      <div
+                        key={index}
+                        className={`relative w-24 h-24 rounded-lg overflow-hidden group cursor-pointer border-2 ${
+                          index === form.primary_image
+                            ? "border-purple-500"
+                            : "border-transparent"
+                        }`}
+                        onClick={() => setPrimaryImage(index)}
+                      >
+                        <img
+                          src={url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                        {index === form.primary_image && (
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-purple-500 text-white text-xs rounded">
+                            Main
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeImage(index);
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload buttons */}
+                <div className="flex gap-2">
+                  <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white font-medium rounded-lg cursor-pointer transition-colors">
+                    {uploading ? "Uploading..." : "Upload Images"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <label className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-medium rounded-lg cursor-pointer transition-colors">
+                    Upload PDF
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handlePdfSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingId(null);
+                  }}
+                  className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Designs Grid */}
+      {loading ? (
+        <p className="text-zinc-500">Loading...</p>
+      ) : designs.length === 0 ? (
+        <p className="text-zinc-500">No designs yet. Add your first design!</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {designs.map((design) => (
+            <div
+              key={design.id}
+              className="bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden"
+            >
+              <div className="aspect-video bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+                {design.images.length > 0 ? (
+                  <img
+                    src={design.images[design.primary_image || 0] || design.images[0]}
+                    alt={design.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-zinc-400">No image</span>
+                )}
+              </div>
+              <div className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-medium text-zinc-900 dark:text-white">
+                      {design.title}
+                    </h3>
+                    <p className="text-sm text-zinc-500 capitalize">
+                      {design.category} {design.year && `• ${design.year}`}
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">
+                    {design.images.length} img
+                  </span>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => handleEdit(design)}
+                    className="text-blue-600 hover:text-blue-500 font-medium text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(design.id)}
+                    className="text-red-600 hover:text-red-500 font-medium text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

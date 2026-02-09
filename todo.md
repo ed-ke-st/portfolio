@@ -33,3 +33,25 @@ Production Build: Run npm run build locally to catch any TypeScript or Linting e
 DNS Configuration:
 Point Hostinger Domain to Vercel using CNAME/A records.
 CI/CD: Connect the GitHub repository to Vercel and Render for automatic deployments on git push.
+
+✅ Phase 5: Database & Authentication (DONE)
+Database Setup: Add SQLite with SQLAlchemy ORM.
+Models: Create database models for Projects and DesignWork (logos, branding, etc.).
+Migration: Set up Alembic for database migrations.
+Authentication: Implement JWT-based admin authentication.
+CRUD Endpoints: Create, Read, Update, Delete for all content types.
+Image Upload: Handle image uploads with local storage or cloud (Cloudinary/S3).
+
+✅ Phase 6: Admin Dashboard (DONE)
+Admin Routes: Protected /admin routes in Next.js.
+Login Page: Admin authentication UI.
+Content Manager: Forms to add/edit/delete projects and design work.
+Image Uploader: Drag-and-drop or file picker for images.
+Preview: Live preview of content before publishing.
+
+✅ Phase 7: Design & Logo Gallery (DONE)
+New Models: DesignWork schema (Title, Category, Images, Description, Client).
+Categories: Logos, Branding, UI/UX, Print, etc.
+Gallery Component: Grid layout with lightbox for viewing.
+Filtering: Filter by category.
+Frontend Section: New /design or /gallery page.

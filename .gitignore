@@ -82,3 +82,7 @@ coverage.xml
 
 # Vercel
 .vercel
+
+# Local SQLite + uploads
+backend/portfolio.db
+backend/uploads/

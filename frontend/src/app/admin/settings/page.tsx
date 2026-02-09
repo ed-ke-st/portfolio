@@ -1,0 +1,922 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  getSettings,
+  updateSetting,
+  HeroSettings,
+  Skill,
+  ContactSettings,
+  FooterSettings,
+  AppearanceSettings,
+} from "@/lib/settings-api";
+
+type TabType = "hero" | "skills" | "contact" | "footer" | "appearance";
+
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<TabType>("hero");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  // Settings state
+  const [hero, setHero] = useState<HeroSettings>({
+    title: "",
+    highlight: "",
+    subtitle: "",
+    cta_primary: "",
+    cta_secondary: "",
+  });
+
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [newSkill, setNewSkill] = useState({ name: "", category: "", level: 75 });
+  const [skillCategories, setSkillCategories] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState("");
+
+  const [contact, setContact] = useState<ContactSettings>({
+    heading: "",
+    subheading: "",
+    email: "",
+    github: "",
+    linkedin: "",
+    twitter: "",
+    instagram: "",
+    phone: "",
+  });
+
+  const [footer, setFooter] = useState<FooterSettings>({
+    copyright: "",
+  });
+
+  const [appearance, setAppearance] = useState<AppearanceSettings>({
+    accent: "#2563eb",
+    background: "#ffffff",
+    text: "#111827",
+    muted: "#6b7280",
+    card: "#f4f4f5",
+    border: "#e4e4e7",
+    sections: {
+      hero: "",
+      projects: "",
+      designs: "",
+      skills: "",
+      footer: "",
+    },
+    dark_mode: false,
+    dark: {
+      accent: "#60a5fa",
+      background: "#0b0f1a",
+      text: "#e5e7eb",
+      muted: "#9ca3af",
+      card: "#111827",
+      border: "#1f2937",
+      sections: {
+        hero: "",
+        projects: "",
+        designs: "",
+        skills: "",
+        footer: "",
+      },
+    },
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await getSettings();
+        if (data.hero) setHero(data.hero);
+        if (data.skills) {
+          setSkills(
+            data.skills.map((s) => ({
+              ...s,
+              level: typeof s.level === "number" ? s.level : 75,
+            }))
+          );
+        }
+        if (data.skill_categories) {
+          setSkillCategories(data.skill_categories);
+        } else if (data.skills) {
+          const merged = Array.from(new Set(data.skills.map((s) => s.category))).filter(Boolean);
+          setSkillCategories(merged);
+        }
+        if (data.contact) setContact(data.contact);
+        if (data.footer) setFooter(data.footer);
+        if (data.appearance) {
+          setAppearance({
+            ...appearance,
+            ...data.appearance,
+            sections: {
+              ...appearance.sections,
+              ...(data.appearance.sections || {}),
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  const handleSave = async (key: string, value: unknown) => {
+    setSaving(true);
+    setMessage("");
+    try {
+      await updateSetting(key, value);
+      setMessage("Saved successfully!");
+      setTimeout(() => setMessage(""), 3000);
+    } catch (error) {
+      setMessage("Failed to save");
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addSkill = () => {
+    if (newSkill.name && newSkill.category) {
+      const updated = [...skills, newSkill];
+      setSkills(updated);
+      if (!skillCategories.includes(newSkill.category)) {
+        setSkillCategories([...skillCategories, newSkill.category]);
+      }
+      setNewSkill({ name: "", category: "", level: 75 });
+    }
+  };
+
+  const removeSkill = (index: number) => {
+    setSkills(skills.filter((_, i) => i !== index));
+  };
+
+  const addCategory = () => {
+    const trimmed = newCategory.trim();
+    if (!trimmed) return;
+    if (!skillCategories.includes(trimmed)) {
+      setSkillCategories([...skillCategories, trimmed]);
+    }
+    setNewCategory("");
+  };
+
+  const removeCategory = (index: number) => {
+    setSkillCategories(skillCategories.filter((_, i) => i !== index));
+  };
+
+  const sanitizePhone = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    return trimmed.replace(/[^\d+]/g, "");
+  };
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length === 10) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    if (digits.length === 11 && digits.startsWith("1")) {
+      return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+    }
+    return value;
+  };
+
+  const tabs = [
+    { id: "hero" as TabType, label: "Hero Section" },
+    { id: "skills" as TabType, label: "Skills" },
+    { id: "contact" as TabType, label: "Contact" },
+    { id: "appearance" as TabType, label: "Appearance" },
+    { id: "footer" as TabType, label: "Footer" },
+  ];
+
+  const isHexColor = (value: string) => /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
+  const normalizeHex = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (trimmed.startsWith("#")) return trimmed;
+    return `#${trimmed}`;
+  };
+  const resolveColor = (value: string, fallback: string) =>
+    isHexColor(value) ? value : fallback;
+  const previewPalette = appearance.dark_mode && appearance.dark
+    ? {
+        accent: resolveColor(appearance.dark.accent, "#60a5fa"),
+        background: resolveColor(appearance.dark.background, "#0b0f1a"),
+        text: resolveColor(appearance.dark.text, "#e5e7eb"),
+        muted: resolveColor(appearance.dark.muted, "#9ca3af"),
+        card: resolveColor(appearance.dark.card, "#111827"),
+        border: resolveColor(appearance.dark.border, "#1f2937"),
+      }
+    : {
+        accent: resolveColor(appearance.accent, "#2563eb"),
+        background: resolveColor(appearance.background, "#ffffff"),
+        text: resolveColor(appearance.text, "#111827"),
+        muted: resolveColor(appearance.muted, "#6b7280"),
+        card: resolveColor(appearance.card, "#f4f4f5"),
+        border: resolveColor(appearance.border, "#e4e4e7"),
+      };
+
+  if (loading) {
+    return <p className="text-zinc-500">Loading settings...</p>;
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+          Site Settings
+        </h1>
+        {message && (
+          <span className={`text-sm ${message.includes("Failed") ? "text-red-500" : "text-green-500"}`}>
+            {message}
+          </span>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                : "border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Hero Tab */}
+      {activeTab === "hero" && (
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Title (before highlight)
+              </label>
+              <input
+                type="text"
+                value={hero.title}
+                onChange={(e) => setHero({ ...hero, title: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Highlight Text (colored)
+              </label>
+              <input
+                type="text"
+                value={hero.highlight}
+                onChange={(e) => setHero({ ...hero, highlight: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Subtitle
+              </label>
+              <textarea
+                value={hero.subtitle}
+                onChange={(e) => setHero({ ...hero, subtitle: e.target.value })}
+                rows={3}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Primary Button Text
+                </label>
+                <input
+                  type="text"
+                  value={hero.cta_primary}
+                  onChange={(e) => setHero({ ...hero, cta_primary: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Secondary Button Text
+                </label>
+                <input
+                  type="text"
+                  value={hero.cta_secondary}
+                  onChange={(e) => setHero({ ...hero, cta_secondary: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+            </div>
+            <button
+              onClick={() => handleSave("hero", hero)}
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Hero Settings"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Skills Tab */}
+      {activeTab === "skills" && (
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+          <div className="space-y-4">
+            {/* Add new skill */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Skill name"
+                value={newSkill.name}
+                onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
+                className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+              <input
+                type="text"
+                placeholder="Category"
+                value={newSkill.category}
+                onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value })}
+                list="skill-categories"
+                className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={newSkill.level}
+                  onChange={(e) => setNewSkill({ ...newSkill, level: Number(e.target.value) })}
+                  className="w-28"
+                />
+                <span className="text-xs text-zinc-500 w-8 text-right">
+                  {newSkill.level}
+                </span>
+              </div>
+              <datalist id="skill-categories">
+                {skillCategories.map((cat) => (
+                  <option key={cat} value={cat} />
+                ))}
+              </datalist>
+              <button
+                onClick={addSkill}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Skills list */}
+            <div className="flex flex-wrap gap-2">
+              {skills.map((skill, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg"
+                >
+                  <span className="text-zinc-900 dark:text-white">{skill.name}</span>
+                  <span className="text-xs text-zinc-500">({skill.category})</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={typeof skill.level === "number" ? skill.level : 75}
+                    onChange={(e) => {
+                      const level = Number(e.target.value);
+                      setSkills((prev) =>
+                        prev.map((s, i) => (i === index ? { ...s, level } : s))
+                      );
+                    }}
+                    className="w-24"
+                  />
+                  <span className="text-xs text-zinc-500 w-8 text-right">
+                    {typeof skill.level === "number" ? skill.level : 75}
+                  </span>
+                  <button
+                    onClick={() => removeSkill(index)}
+                    className="text-red-500 hover:text-red-400"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Skill Categories
+              </p>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  placeholder="New category"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+                <button
+                  onClick={addCategory}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {skillCategories.map((cat, index) => (
+                  <div
+                    key={cat}
+                    className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg"
+                  >
+                    <span className="text-zinc-900 dark:text-white">{cat}</span>
+                    <button
+                      onClick={() => removeCategory(index)}
+                      className="text-red-500 hover:text-red-400"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3">
+                <button
+                  onClick={() => handleSave("skill_categories", skillCategories)}
+                  disabled={saving}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save Categories"}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleSave("skills", skills)}
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Skills"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Tab */}
+      {activeTab === "contact" && (
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Heading
+              </label>
+              <input
+                type="text"
+                value={contact.heading}
+                onChange={(e) => setContact({ ...contact, heading: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Subheading
+              </label>
+              <input
+                type="text"
+                value={contact.subheading}
+                onChange={(e) => setContact({ ...contact, subheading: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                value={contact.email}
+                onChange={(e) => setContact({ ...contact, email: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                GitHub URL
+              </label>
+              <input
+                type="url"
+                value={contact.github}
+                onChange={(e) => setContact({ ...contact, github: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                LinkedIn URL
+              </label>
+              <input
+                type="url"
+                value={contact.linkedin}
+                onChange={(e) => setContact({ ...contact, linkedin: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Twitter/X URL (optional)
+              </label>
+              <input
+                type="url"
+                value={contact.twitter}
+                onChange={(e) => setContact({ ...contact, twitter: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Instagram URL (optional)
+              </label>
+              <input
+                type="url"
+                value={contact.instagram}
+                onChange={(e) => setContact({ ...contact, instagram: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Phone (optional)
+              </label>
+              <input
+                type="tel"
+                value={contact.phone}
+                onChange={(e) => setContact({ ...contact, phone: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+            <button
+              onClick={async () => {
+                const sanitizedPhone = sanitizePhone(contact.phone);
+                await handleSave("contact", { ...contact, phone: sanitizedPhone });
+                setContact((prev) => ({ ...prev, phone: formatPhone(sanitizedPhone) }));
+              }}
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Contact Settings"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Appearance Tab */}
+      {activeTab === "appearance" && (
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+          <div className="space-y-4">
+            {[
+              { key: "accent", label: "Primary / Accent" },
+              { key: "background", label: "Background" },
+              { key: "text", label: "Text" },
+              { key: "muted", label: "Muted / Secondary" },
+              { key: "card", label: "Card / Surface" },
+              { key: "border", label: "Border" },
+            ].map((field) => (
+              <div key={field.key} className="flex items-center gap-4">
+                <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  {field.label}
+                </label>
+                <input
+                  type="color"
+                  value={
+                    isHexColor(appearance[field.key as keyof AppearanceSettings])
+                      ? appearance[field.key as keyof AppearanceSettings]
+                      : "#000000"
+                  }
+                  onChange={(e) =>
+                    setAppearance({
+                      ...appearance,
+                      [field.key]: e.target.value,
+                    })
+                  }
+                  className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
+                />
+                <input
+                  type="text"
+                  value={appearance[field.key as keyof AppearanceSettings]}
+                  onChange={(e) =>
+                    setAppearance({
+                      ...appearance,
+                      [field.key]: e.target.value,
+                    })
+                  }
+                  onBlur={(e) =>
+                    setAppearance({
+                      ...appearance,
+                      [field.key]: normalizeHex(e.target.value),
+                    })
+                  }
+                  className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  placeholder="#000000"
+                />
+              </div>
+            ))}
+
+            <div className="pt-2">
+              <label className="flex items-center gap-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={Boolean(appearance.dark_mode)}
+                  onChange={(e) =>
+                    setAppearance({ ...appearance, dark_mode: e.target.checked })
+                  }
+                  className="h-4 w-4"
+                />
+                Enable dark mode
+              </label>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                Live Preview
+              </p>
+              <div
+                className="rounded-xl p-6 border border-zinc-200 dark:border-zinc-700"
+                style={{
+                  ["--app-accent" as string]: previewPalette.accent,
+                  ["--app-bg" as string]: previewPalette.background,
+                  ["--app-text" as string]: previewPalette.text,
+                  ["--app-muted" as string]: previewPalette.muted,
+                  ["--app-card" as string]: previewPalette.card,
+                  ["--app-border" as string]: previewPalette.border,
+                  background: previewPalette.background,
+                }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[var(--app-text)]">
+                    Preview
+                  </h3>
+                  <button className="px-3 py-1 text-sm font-medium text-white bg-[var(--app-accent)] rounded-full">
+                    Accent
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg bg-[var(--app-card)] border border-[var(--app-border)]">
+                    <p className="text-sm text-[var(--app-muted)]">Muted text</p>
+                    <p className="text-base text-[var(--app-text)] mt-1">
+                      Card content
+                    </p>
+                    <div className="h-2 w-full bg-[var(--app-border)] rounded-full mt-3 overflow-hidden">
+                      <div className="h-full w-2/3 bg-[var(--app-accent)]" />
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-[var(--app-card)] border border-[var(--app-border)]">
+                    <p className="text-sm text-[var(--app-muted)]">Secondary copy</p>
+                    <p className="text-base text-[var(--app-text)] mt-1">
+                      Accent link
+                    </p>
+                    <span className="inline-flex mt-3 text-sm text-[var(--app-accent)]">
+                      View more →
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                Section Background Overrides
+              </p>
+              {[
+                { key: "hero", label: "Hero" },
+                { key: "projects", label: "Projects" },
+                { key: "designs", label: "Designs" },
+                { key: "skills", label: "Skills" },
+                { key: "footer", label: "Footer" },
+              ].map((field) => (
+                <div key={field.key} className="flex items-center gap-4 mb-3">
+                  <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    {field.label}
+                  </label>
+                  <input
+                    type="color"
+                    value={
+                      isHexColor(appearance.sections?.[field.key as keyof AppearanceSettings["sections"]] || "")
+                        ? appearance.sections![field.key as keyof AppearanceSettings["sections"]]!
+                        : "#ffffff"
+                    }
+                    onChange={(e) =>
+                      setAppearance({
+                        ...appearance,
+                        sections: {
+                          ...appearance.sections,
+                          [field.key]: e.target.value,
+                        },
+                      })
+                    }
+                    className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
+                  />
+                  <input
+                    type="text"
+                    value={appearance.sections?.[field.key as keyof AppearanceSettings["sections"]] || ""}
+                    onChange={(e) =>
+                      setAppearance({
+                        ...appearance,
+                        sections: {
+                          ...appearance.sections,
+                          [field.key]: e.target.value,
+                        },
+                      })
+                    }
+                    onBlur={(e) =>
+                      setAppearance({
+                        ...appearance,
+                        sections: {
+                          ...appearance.sections,
+                          [field.key]: normalizeHex(e.target.value),
+                        },
+                      })
+                    }
+                    className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                    placeholder="Leave empty for default"
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-zinc-500">
+                Leave blank to use the global background.
+              </p>
+            </div>
+
+            {appearance.dark_mode && (
+              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                  Dark Mode Colors
+                </p>
+                {[
+                  { key: "accent", label: "Primary / Accent" },
+                  { key: "background", label: "Background" },
+                  { key: "text", label: "Text" },
+                  { key: "muted", label: "Muted / Secondary" },
+                  { key: "card", label: "Card / Surface" },
+                  { key: "border", label: "Border" },
+                ].map((field) => (
+                  <div key={field.key} className="flex items-center gap-4 mb-3">
+                    <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      {field.label}
+                    </label>
+                    <input
+                      type="color"
+                      value={
+                        isHexColor(appearance.dark?.[field.key as keyof AppearanceSettings["dark"]] || "")
+                          ? appearance.dark![field.key as keyof AppearanceSettings["dark"]]!
+                          : "#000000"
+                      }
+                      onChange={(e) =>
+                        setAppearance({
+                          ...appearance,
+                          dark: {
+                            ...appearance.dark!,
+                            [field.key]: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
+                    />
+                    <input
+                      type="text"
+                      value={appearance.dark?.[field.key as keyof AppearanceSettings["dark"]] || ""}
+                      onChange={(e) =>
+                        setAppearance({
+                          ...appearance,
+                          dark: {
+                            ...appearance.dark!,
+                            [field.key]: e.target.value,
+                          },
+                        })
+                      }
+                      onBlur={(e) =>
+                        setAppearance({
+                          ...appearance,
+                          dark: {
+                            ...appearance.dark!,
+                            [field.key]: normalizeHex(e.target.value),
+                          },
+                        })
+                      }
+                      className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      placeholder="#000000"
+                    />
+                  </div>
+                ))}
+
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-4 mb-2">
+                  Dark Mode Section Overrides
+                </p>
+                {[
+                  { key: "hero", label: "Hero" },
+                  { key: "projects", label: "Projects" },
+                  { key: "designs", label: "Designs" },
+                  { key: "skills", label: "Skills" },
+                  { key: "footer", label: "Footer" },
+                ].map((field) => (
+                  <div key={field.key} className="flex items-center gap-4 mb-3">
+                    <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      {field.label}
+                    </label>
+                    <input
+                      type="color"
+                      value={
+                        isHexColor(appearance.dark?.sections?.[field.key as keyof AppearanceSettings["dark"]["sections"]] || "")
+                          ? appearance.dark!.sections![field.key as keyof AppearanceSettings["dark"]["sections"]]!
+                          : "#000000"
+                      }
+                      onChange={(e) =>
+                        setAppearance({
+                          ...appearance,
+                          dark: {
+                            ...appearance.dark!,
+                            sections: {
+                              ...appearance.dark!.sections,
+                              [field.key]: e.target.value,
+                            },
+                          },
+                        })
+                      }
+                      className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
+                    />
+                    <input
+                      type="text"
+                      value={appearance.dark?.sections?.[field.key as keyof AppearanceSettings["dark"]["sections"]] || ""}
+                      onChange={(e) =>
+                        setAppearance({
+                          ...appearance,
+                          dark: {
+                            ...appearance.dark!,
+                            sections: {
+                              ...appearance.dark!.sections,
+                              [field.key]: e.target.value,
+                            },
+                          },
+                        })
+                      }
+                      onBlur={(e) =>
+                        setAppearance({
+                          ...appearance,
+                          dark: {
+                            ...appearance.dark!,
+                            sections: {
+                              ...appearance.dark!.sections,
+                              [field.key]: normalizeHex(e.target.value),
+                            },
+                          },
+                        })
+                      }
+                      className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      placeholder="Leave empty for default"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => handleSave("appearance", appearance)}
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Appearance"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Footer Tab */}
+      {activeTab === "footer" && (
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Copyright Text
+              </label>
+              <input
+                type="text"
+                value={footer.copyright}
+                onChange={(e) => setFooter({ ...footer, copyright: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                placeholder="Your Name. All rights reserved."
+              />
+              <p className="text-xs text-zinc-500 mt-1">Year is added automatically</p>
+            </div>
+            <button
+              onClick={() => handleSave("footer", footer)}
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Footer Settings"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

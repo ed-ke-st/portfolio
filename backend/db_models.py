@@ -1,0 +1,56 @@
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON
+from sqlalchemy.sql import func
+
+from database import Base
+
+
+class SiteSettings(Base):
+    __tablename__ = "site_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, index=True, nullable=False)
+    value = Column(JSON, nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=False)
+    tech_stack = Column(JSON, nullable=False)  # List of strings
+    image_url = Column(String(500), nullable=True)
+    github_link = Column(String(500), nullable=True)
+    live_url = Column(String(500), nullable=True)
+    featured = Column(Boolean, default=False)
+    order = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class DesignWork(Base):
+    __tablename__ = "design_works"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=False)  # logo, branding, ui, print
+    images = Column(JSON, nullable=False)  # List of image URLs
+    primary_image = Column(Integer, default=0)  # Index of primary/thumbnail image
+    client = Column(String(200), nullable=True)
+    year = Column(Integer, nullable=True)
+    featured = Column(Boolean, default=False)
+    order = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

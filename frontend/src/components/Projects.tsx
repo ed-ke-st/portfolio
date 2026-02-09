@@ -1,19 +1,26 @@
 import { Project } from "@/types/project";
+import { AppearanceSettings } from "@/lib/settings-api";
 import ProjectCard from "./ProjectCard";
 
 interface ProjectsProps {
   projects: Project[];
+  appearance?: AppearanceSettings;
 }
 
-export default function Projects({ projects }: ProjectsProps) {
+export default function Projects({ projects, appearance }: ProjectsProps) {
+  const sectionBg = appearance?.sections?.projects;
   return (
-    <section id="projects" className="py-20 px-4 sm:px-6 lg:px-8">
+    <section
+      id="projects"
+      className="py-20 px-4 sm:px-6 lg:px-8 bg-[var(--app-bg)]"
+      style={sectionBg ? { background: sectionBg } : undefined}
+    >
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--app-text)]">
             Featured Projects
           </h2>
-          <p className="mt-4 text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
+          <p className="mt-4 text-[var(--app-muted)] max-w-2xl mx-auto">
             A selection of projects I&apos;ve worked on, showcasing my skills in full-stack development
           </p>
         </div>
