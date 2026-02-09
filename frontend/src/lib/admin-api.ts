@@ -160,6 +160,18 @@ export interface ExtractedImage {
   url: string;
 }
 
+export interface FailedPage {
+  page: number;
+  error: string;
+}
+
+export interface ExtractPdfResponse {
+  images: ExtractedImage[];
+  failed: FailedPage[];
+  total_requested: number;
+  total_extracted: number;
+}
+
 export async function previewPdf(file: File): Promise<PdfPreviewResponse> {
   const token = getToken();
   const formData = new FormData();
@@ -180,7 +192,7 @@ export async function previewPdf(file: File): Promise<PdfPreviewResponse> {
 export async function extractPdfPages(
   file: File,
   pages: number[]
-): Promise<{ images: ExtractedImage[] }> {
+): Promise<ExtractPdfResponse> {
   const token = getToken();
   const formData = new FormData();
   formData.append("file", file);

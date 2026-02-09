@@ -45,6 +45,7 @@ export default function ProjectsPage() {
   const [capturing, setCapturing] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
+  const [originalScreenshotSrc, setOriginalScreenshotSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -115,6 +116,7 @@ export default function ProjectsPage() {
       setShowForm(false);
       setEditingId(null);
       setForm(emptyForm);
+      cleanupScreenshot();
     } catch (error) {
       console.error("Failed to save project:", error);
     } finally {
@@ -148,7 +150,10 @@ export default function ProjectsPage() {
     try {
       const blob = await captureProjectScreenshot(form.live_url);
       const objectUrl = URL.createObjectURL(blob);
+      // Clean up any previous screenshot
+      if (originalScreenshotSrc) URL.revokeObjectURL(originalScreenshotSrc);
       setScreenshotSrc(objectUrl);
+      setOriginalScreenshotSrc(objectUrl);
       setShowCropModal(true);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
@@ -217,13 +222,19 @@ export default function ProjectsPage() {
         : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
       setForm({ ...form, image_url: imageUrl });
       setShowCropModal(false);
-      if (screenshotSrc) URL.revokeObjectURL(screenshotSrc);
+      // Keep originalScreenshotSrc for potential recrop - only clear screenshotSrc
       setScreenshotSrc(null);
     } catch (error) {
       console.error("Failed to upload cropped screenshot:", error);
     } finally {
       setUploading(false);
     }
+  };
+
+  const cleanupScreenshot = () => {
+    if (originalScreenshotSrc) URL.revokeObjectURL(originalScreenshotSrc);
+    setOriginalScreenshotSrc(null);
+    setScreenshotSrc(null);
   };
 
   return (
@@ -319,7 +330,7 @@ export default function ProjectsPage() {
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
                     title={!form.live_url ? "Add a Live URL to capture a screenshot" : ""}
                   >
-                    {capturing ? "Capturing..." : "Capture"}
+                    {capturing ? "Capturing..." : originalScreenshotSrc ? "Recapture" : "Capture"}
                   </button>
                 </div>
               </div>
@@ -356,6 +367,7 @@ export default function ProjectsPage() {
                   onClick={() => {
                     setShowForm(false);
                     setEditingId(null);
+                    cleanupScreenshot();
                   }}
                   className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium"
                 >
@@ -385,7 +397,6 @@ export default function ProjectsPage() {
               <button
                 onClick={() => {
                   setShowCropModal(false);
-                  if (screenshotSrc) URL.revokeObjectURL(screenshotSrc);
                   setScreenshotSrc(null);
                 }}
                 className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
@@ -424,7 +435,6 @@ export default function ProjectsPage() {
                   type="button"
                   onClick={() => {
                     setShowCropModal(false);
-                    if (screenshotSrc) URL.revokeObjectURL(screenshotSrc);
                     setScreenshotSrc(null);
                   }}
                   className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium"

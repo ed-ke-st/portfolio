@@ -30,7 +30,11 @@ export default async function Home() {
       <Hero settings={settings.hero} appearance={resolved.active} />
       <Projects projects={projects} appearance={resolved.active} />
       <DesignSection designs={designs} appearance={resolved.active} />
-      <TechStack skills={settings.skills} appearance={resolved.active} />
+      <TechStack
+        skills={settings.skills}
+        skillCategories={settings.skill_categories as import("@/lib/settings-api").SkillCategory[] | undefined}
+        appearance={resolved.active}
+      />
     </>
   );
 }

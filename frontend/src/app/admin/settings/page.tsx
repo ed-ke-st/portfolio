@@ -6,10 +6,12 @@ import {
   updateSetting,
   HeroSettings,
   Skill,
+  SkillCategory,
   ContactSettings,
   FooterSettings,
   AppearanceSettings,
 } from "@/lib/settings-api";
+import { uploadFile } from "@/lib/admin-api";
 
 type TabType = "hero" | "skills" | "contact" | "footer" | "appearance";
 
@@ -19,6 +21,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  const [uploadingHeroBg, setUploadingHeroBg] = useState(false);
+
   // Settings state
   const [hero, setHero] = useState<HeroSettings>({
     title: "",
@@ -26,12 +30,16 @@ export default function SettingsPage() {
     subtitle: "",
     cta_primary: "",
     cta_secondary: "",
+    background_image: "",
+    background_overlay: 50,
   });
 
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [newSkill, setNewSkill] = useState({ name: "", category: "", level: 75 });
-  const [skillCategories, setSkillCategories] = useState<string[]>([]);
-  const [newCategory, setNewCategory] = useState("");
+  const [newSkill, setNewSkill] = useState({ name: "", category: "", mainCategory: "", level: 75 });
+  const [skillCategories, setSkillCategories] = useState<SkillCategory[]>([]);
+  const [newMainCategory, setNewMainCategory] = useState("");
+  const [newSubCategory, setNewSubCategory] = useState("");
+  const [selectedMainCategoryForSub, setSelectedMainCategoryForSub] = useState("");
 
   const [contact, setContact] = useState<ContactSettings>({
     heading: "",
@@ -94,10 +102,32 @@ export default function SettingsPage() {
           );
         }
         if (data.skill_categories) {
-          setSkillCategories(data.skill_categories);
+          // Handle both old format (string[]) and new format (SkillCategory[])
+          if (Array.isArray(data.skill_categories) && data.skill_categories.length > 0) {
+            if (typeof data.skill_categories[0] === "string") {
+              // Old format - convert to new format
+              const converted: SkillCategory[] = (data.skill_categories as string[]).map((cat) => ({
+                name: cat,
+                subcategories: [],
+              }));
+              setSkillCategories(converted);
+            } else {
+              setSkillCategories(data.skill_categories as SkillCategory[]);
+            }
+          }
         } else if (data.skills) {
-          const merged = Array.from(new Set(data.skills.map((s) => s.category))).filter(Boolean);
-          setSkillCategories(merged);
+          // Build categories from skills
+          const mainCats = new Map<string, Set<string>>();
+          data.skills.forEach((s) => {
+            const main = s.mainCategory || "Other";
+            if (!mainCats.has(main)) mainCats.set(main, new Set());
+            if (s.category) mainCats.get(main)!.add(s.category);
+          });
+          const converted: SkillCategory[] = Array.from(mainCats.entries()).map(([name, subs]) => ({
+            name,
+            subcategories: Array.from(subs),
+          }));
+          setSkillCategories(converted);
         }
         if (data.contact) setContact(data.contact);
         if (data.footer) setFooter(data.footer);
@@ -137,13 +167,10 @@ export default function SettingsPage() {
   };
 
   const addSkill = () => {
-    if (newSkill.name && newSkill.category) {
+    if (newSkill.name && newSkill.category && newSkill.mainCategory) {
       const updated = [...skills, newSkill];
       setSkills(updated);
-      if (!skillCategories.includes(newSkill.category)) {
-        setSkillCategories([...skillCategories, newSkill.category]);
-      }
-      setNewSkill({ name: "", category: "", level: 75 });
+      setNewSkill({ name: "", category: "", mainCategory: "", level: 75 });
     }
   };
 
@@ -151,17 +178,46 @@ export default function SettingsPage() {
     setSkills(skills.filter((_, i) => i !== index));
   };
 
-  const addCategory = () => {
-    const trimmed = newCategory.trim();
+  const addMainCategory = () => {
+    const trimmed = newMainCategory.trim();
     if (!trimmed) return;
-    if (!skillCategories.includes(trimmed)) {
-      setSkillCategories([...skillCategories, trimmed]);
+    if (!skillCategories.find((c) => c.name === trimmed)) {
+      setSkillCategories([...skillCategories, { name: trimmed, subcategories: [] }]);
     }
-    setNewCategory("");
+    setNewMainCategory("");
   };
 
-  const removeCategory = (index: number) => {
+  const removeMainCategory = (index: number) => {
     setSkillCategories(skillCategories.filter((_, i) => i !== index));
+  };
+
+  const addSubCategory = () => {
+    const trimmed = newSubCategory.trim();
+    if (!trimmed || !selectedMainCategoryForSub) return;
+    setSkillCategories(
+      skillCategories.map((cat) =>
+        cat.name === selectedMainCategoryForSub && !cat.subcategories.includes(trimmed)
+          ? { ...cat, subcategories: [...cat.subcategories, trimmed] }
+          : cat
+      )
+    );
+    setNewSubCategory("");
+  };
+
+  const removeSubCategory = (mainIndex: number, subIndex: number) => {
+    setSkillCategories(
+      skillCategories.map((cat, i) =>
+        i === mainIndex
+          ? { ...cat, subcategories: cat.subcategories.filter((_, si) => si !== subIndex) }
+          : cat
+      )
+    );
+  };
+
+  // Get all subcategories for a main category
+  const getSubcategories = (mainCategory: string) => {
+    const cat = skillCategories.find((c) => c.name === mainCategory);
+    return cat?.subcategories || [];
   };
 
   const sanitizePhone = (value: string) => {
@@ -320,6 +376,83 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
+
+            {/* Background Image */}
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Background Image (optional)
+              </label>
+              {hero.background_image && (
+                <div className="mb-3 relative inline-block">
+                  <img
+                    src={hero.background_image}
+                    alt="Hero background"
+                    className="h-32 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setHero({ ...hero, background_image: "" })}
+                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={hero.background_image || ""}
+                  onChange={(e) => setHero({ ...hero, background_image: e.target.value })}
+                  placeholder="Image URL or upload"
+                  className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+                <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white font-medium rounded-lg cursor-pointer transition-colors">
+                  {uploadingHeroBg ? "..." : "Upload"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingHeroBg(true);
+                      try {
+                        const result = await uploadFile(file);
+                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                        const imageUrl = result.url.startsWith("http")
+                          ? result.url
+                          : `${apiUrl}${result.url}`;
+                        setHero({ ...hero, background_image: imageUrl });
+                      } catch (error) {
+                        console.error("Failed to upload:", error);
+                      } finally {
+                        setUploadingHeroBg(false);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              {hero.background_image && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Overlay Darkness ({hero.background_overlay ?? 50}%)
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={80}
+                    step={5}
+                    value={hero.background_overlay ?? 50}
+                    onChange={(e) => setHero({ ...hero, background_overlay: Number(e.target.value) })}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Adds a dark overlay to improve text readability
+                  </p>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => handleSave("hero", hero)}
               disabled={saving}
@@ -334,131 +467,257 @@ export default function SettingsPage() {
       {/* Skills Tab */}
       {activeTab === "skills" && (
         <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
-          <div className="space-y-4">
-            {/* Add new skill */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Skill name"
-                value={newSkill.name}
-                onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
-                className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-              />
-              <input
-                type="text"
-                placeholder="Category"
-                value={newSkill.category}
-                onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value })}
-                list="skill-categories"
-                className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-              />
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={newSkill.level}
-                  onChange={(e) => setNewSkill({ ...newSkill, level: Number(e.target.value) })}
-                  className="w-28"
-                />
-                <span className="text-xs text-zinc-500 w-8 text-right">
-                  {newSkill.level}
-                </span>
-              </div>
-              <datalist id="skill-categories">
-                {skillCategories.map((cat) => (
-                  <option key={cat} value={cat} />
-                ))}
-              </datalist>
-              <button
-                onClick={addSkill}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-              >
-                Add
-              </button>
-            </div>
-
-            {/* Skills list */}
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg"
-                >
-                  <span className="text-zinc-900 dark:text-white">{skill.name}</span>
-                  <span className="text-xs text-zinc-500">({skill.category})</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={typeof skill.level === "number" ? skill.level : 75}
-                    onChange={(e) => {
-                      const level = Number(e.target.value);
-                      setSkills((prev) =>
-                        prev.map((s, i) => (i === index ? { ...s, level } : s))
-                      );
-                    }}
-                    className="w-24"
-                  />
-                  <span className="text-xs text-zinc-500 w-8 text-right">
-                    {typeof skill.level === "number" ? skill.level : 75}
-                  </span>
-                  <button
-                    onClick={() => removeSkill(index)}
-                    className="text-red-500 hover:text-red-400"
-                  >
-                    &times;
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                Skill Categories
+          <div className="space-y-6">
+            {/* Category Management */}
+            <div className="pb-4 border-b border-zinc-200 dark:border-zinc-700">
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                Main Categories
               </p>
               <div className="flex gap-2 mb-3">
                 <input
                   type="text"
-                  placeholder="New category"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="New main category (e.g., Development, Design)"
+                  value={newMainCategory}
+                  onChange={(e) => setNewMainCategory(e.target.value)}
                   className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                 />
                 <button
-                  onClick={addCategory}
+                  onClick={addMainCategory}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
                 >
                   Add
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {skillCategories.map((cat, index) => (
-                  <div
-                    key={cat}
-                    className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg"
-                  >
-                    <span className="text-zinc-900 dark:text-white">{cat}</span>
-                    <button
-                      onClick={() => removeCategory(index)}
-                      className="text-red-500 hover:text-red-400"
-                    >
-                      &times;
-                    </button>
+
+              {/* Main categories with their subcategories */}
+              <div className="space-y-3">
+                {skillCategories.map((cat, mainIndex) => (
+                  <div key={cat.name} className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-zinc-900 dark:text-white">{cat.name}</span>
+                      <button
+                        onClick={() => removeMainCategory(mainIndex)}
+                        className="text-red-500 hover:text-red-400 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {cat.subcategories.map((sub, subIndex) => (
+                        <span
+                          key={sub}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-sm"
+                        >
+                          {sub}
+                          <button
+                            onClick={() => removeSubCategory(mainIndex, subIndex)}
+                            className="text-red-500 hover:text-red-400"
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                      {cat.subcategories.length === 0 && (
+                        <span className="text-xs text-zinc-500">No subcategories yet</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-3">
-                <button
-                  onClick={() => handleSave("skill_categories", skillCategories)}
-                  disabled={saving}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+
+              {/* Add subcategory */}
+              {skillCategories.length > 0 && (
+                <div className="flex gap-2 mt-3">
+                  <select
+                    value={selectedMainCategoryForSub}
+                    onChange={(e) => setSelectedMainCategoryForSub(e.target.value)}
+                    className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  >
+                    <option value="">Select main category</option>
+                    {skillCategories.map((cat) => (
+                      <option key={cat.name} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="New subcategory (e.g., Frontend, Backend)"
+                    value={newSubCategory}
+                    onChange={(e) => setNewSubCategory(e.target.value)}
+                    className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                  <button
+                    onClick={addSubCategory}
+                    disabled={!selectedMainCategoryForSub}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Add Sub
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => handleSave("skill_categories", skillCategories)}
+                disabled={saving}
+                className="mt-3 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Categories"}
+              </button>
+            </div>
+
+            {/* Add new skill */}
+            <div>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                Add Skill
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  type="text"
+                  placeholder="Skill name"
+                  value={newSkill.name}
+                  onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })}
+                  className="flex-1 min-w-[150px] px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+                <select
+                  value={newSkill.mainCategory}
+                  onChange={(e) => setNewSkill({ ...newSkill, mainCategory: e.target.value, category: "" })}
+                  className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                 >
-                  {saving ? "Saving..." : "Save Categories"}
+                  <option value="">Main Category</option>
+                  {skillCategories.map((cat) => (
+                    <option key={cat.name} value={cat.name}>{cat.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={newSkill.category}
+                  onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value })}
+                  disabled={!newSkill.mainCategory}
+                  className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white disabled:opacity-50"
+                >
+                  <option value="">Subcategory</option>
+                  {getSubcategories(newSkill.mainCategory).map((sub) => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={newSkill.level}
+                    onChange={(e) => setNewSkill({ ...newSkill, level: Number(e.target.value) })}
+                    className="w-24"
+                  />
+                  <span className="text-xs text-zinc-500 w-8">{newSkill.level}%</span>
+                </div>
+                <button
+                  onClick={addSkill}
+                  disabled={!newSkill.name || !newSkill.category || !newSkill.mainCategory}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Add
                 </button>
               </div>
+            </div>
+
+            {/* Skills list grouped by main category */}
+            <div>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                Skills ({skills.length})
+              </p>
+              {skillCategories.map((mainCat) => {
+                const mainSkills = skills.filter((s) => s.mainCategory === mainCat.name);
+                if (mainSkills.length === 0) return null;
+                return (
+                  <div key={mainCat.name} className="mb-4">
+                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">
+                      {mainCat.name}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {mainSkills.map((skill, index) => {
+                        const globalIndex = skills.findIndex((s) => s === skill);
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg"
+                          >
+                            <span className="text-zinc-900 dark:text-white">{skill.name}</span>
+                            <span className="text-xs text-zinc-500">({skill.category})</span>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={typeof skill.level === "number" ? skill.level : 75}
+                              onChange={(e) => {
+                                const level = Number(e.target.value);
+                                setSkills((prev) =>
+                                  prev.map((s, i) => (i === globalIndex ? { ...s, level } : s))
+                                );
+                              }}
+                              className="w-20"
+                            />
+                            <span className="text-xs text-zinc-500 w-8">
+                              {typeof skill.level === "number" ? skill.level : 75}%
+                            </span>
+                            <button
+                              onClick={() => removeSkill(globalIndex)}
+                              className="text-red-500 hover:text-red-400"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Skills without main category */}
+              {skills.filter((s) => !s.mainCategory).length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">
+                    Uncategorized
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {skills.filter((s) => !s.mainCategory).map((skill, index) => {
+                      const globalIndex = skills.findIndex((s) => s === skill);
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg"
+                        >
+                          <span className="text-zinc-900 dark:text-white">{skill.name}</span>
+                          <span className="text-xs text-zinc-500">({skill.category || "none"})</span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={typeof skill.level === "number" ? skill.level : 75}
+                            onChange={(e) => {
+                              const level = Number(e.target.value);
+                              setSkills((prev) =>
+                                prev.map((s, i) => (i === globalIndex ? { ...s, level } : s))
+                              );
+                            }}
+                            className="w-20"
+                          />
+                          <span className="text-xs text-zinc-500 w-8">
+                            {typeof skill.level === "number" ? skill.level : 75}%
+                          </span>
+                          <button
+                            onClick={() => removeSkill(globalIndex)}
+                            className="text-red-500 hover:text-red-400"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <button

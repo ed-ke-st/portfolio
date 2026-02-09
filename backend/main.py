@@ -356,7 +356,11 @@ async def extract_pdf_pages(
     pages: str = Form(""),  # Comma-separated page numbers (0-indexed)
     current_user: User = Depends(get_current_admin)
 ):
-    """Extract selected pages from PDF as high-quality images"""
+    """Extract selected pages from PDF as high-quality images.
+
+    Returns successfully extracted images and lists any pages that failed.
+    This allows partial success when memory or processing limits are hit.
+    """
     import fitz  # PyMuPDF
     import uuid
 
@@ -368,12 +372,18 @@ async def extract_pdf_pages(
 
     try:
         doc = fitz.open(stream=content, filetype="pdf")
-        extracted_images = []
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to open PDF: {str(e)}")
 
-        for page_num in page_numbers:
-            if page_num < 0 or page_num >= len(doc):
-                continue
+    extracted_images = []
+    failed_pages = []
 
+    for page_num in page_numbers:
+        if page_num < 0 or page_num >= len(doc):
+            failed_pages.append({"page": page_num, "error": "Page number out of range"})
+            continue
+
+        try:
             page = doc[page_num]
             # High quality export (300 DPI)
             pix = page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
@@ -400,13 +410,17 @@ async def extract_pdf_pages(
                     "page": page_num,
                     "url": f"/uploads/{filename}"
                 })
+        except Exception as e:
+            failed_pages.append({"page": page_num, "error": str(e)})
 
-        doc.close()
+    doc.close()
 
-        return {"images": extracted_images}
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to extract pages: {str(e)}")
+    return {
+        "images": extracted_images,
+        "failed": failed_pages,
+        "total_requested": len(page_numbers),
+        "total_extracted": len(extracted_images)
+    }
 
 
 # ============== Project Screenshot ==============

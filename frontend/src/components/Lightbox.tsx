@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { DesignWork } from "@/types/design";
+import { getLargeUrl, getThumbnailUrl } from "@/lib/image";
 
 interface LightboxProps {
   design: DesignWork;
@@ -75,7 +76,7 @@ export default function Lightbox({ design, onClose }: LightboxProps) {
 
         {/* Image */}
         <img
-          src={design.images[currentIndex]}
+          src={getLargeUrl(design.images[currentIndex])}
           alt={`${design.title} - ${currentIndex + 1}`}
           className="max-h-[70vh] max-w-full object-contain rounded-lg"
         />
@@ -115,9 +116,10 @@ export default function Lightbox({ design, onClose }: LightboxProps) {
               }`}
             >
               <img
-                src={image}
+                src={getThumbnailUrl(image)}
                 alt={`Thumbnail ${index + 1}`}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </button>
           ))}

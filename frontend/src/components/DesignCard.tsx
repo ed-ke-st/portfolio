@@ -1,6 +1,7 @@
 "use client";
 
 import { DesignWork } from "@/types/design";
+import { getThumbnailUrl } from "@/lib/image";
 
 interface DesignCardProps {
   design: DesignWork;
@@ -8,6 +9,9 @@ interface DesignCardProps {
 }
 
 export default function DesignCard({ design, onClick }: DesignCardProps) {
+  const primaryImage = design.images[design.primary_image] || design.images[0];
+  const thumbnailSrc = primaryImage ? getThumbnailUrl(primaryImage) : null;
+
   return (
     <button
       onClick={onClick}
@@ -15,11 +19,12 @@ export default function DesignCard({ design, onClick }: DesignCardProps) {
     >
       {/* Image */}
       <div className="aspect-square bg-[var(--app-bg)] flex items-center justify-center overflow-hidden">
-        {design.images.length > 0 ? (
+        {thumbnailSrc ? (
           <img
-            src={design.images[design.primary_image] || design.images[0]}
+            src={thumbnailSrc}
             alt={design.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
           />
         ) : (
           <span className="text-[var(--app-muted)] text-sm">

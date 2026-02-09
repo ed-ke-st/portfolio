@@ -17,13 +17,29 @@ const defaultSettings: HeroSettings = {
 export default function Hero({ settings, appearance }: HeroProps) {
   const hero = settings || defaultSettings;
   const sectionBg = appearance?.sections?.hero;
+  const hasBackgroundImage = !!hero.background_image;
+  const overlayOpacity = hero.background_overlay ?? 50;
 
   return (
     <section
-      className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-16"
-      style={sectionBg ? { background: sectionBg } : undefined}
+      className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 relative"
+      style={sectionBg && !hasBackgroundImage ? { background: sectionBg } : undefined}
     >
-      <div className="max-w-4xl mx-auto text-center">
+      {/* Background Image */}
+      {hasBackgroundImage && (
+        <>
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${hero.background_image})` }}
+          />
+          <div
+            className="absolute inset-0 bg-black"
+            style={{ opacity: overlayOpacity / 100 }}
+          />
+        </>
+      )}
+
+      <div className="max-w-4xl mx-auto text-center relative z-10">
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-[var(--app-text)] leading-tight">
           {hero.title}{" "}
           <span className="text-[var(--app-accent)]">

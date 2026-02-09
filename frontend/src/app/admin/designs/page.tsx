@@ -11,6 +11,7 @@ import {
   extractPdfPages,
   DesignWork,
   PdfPage,
+  FailedPage,
 } from "@/lib/admin-api";
 
 const CATEGORIES = ["logo", "branding", "ui", "print", "other"];
@@ -189,14 +190,37 @@ export default function DesignsPage() {
       const newUrls = result.images.map((img) =>
         img.url.startsWith("http") ? img.url : `${apiUrl}${img.url}`
       );
-      setForm({ ...form, images: [...form.images, ...newUrls] });
+
+      // Add successfully extracted images
+      if (newUrls.length > 0) {
+        setForm({ ...form, images: [...form.images, ...newUrls] });
+      }
+
+      // Show results message
+      if (result.failed && result.failed.length > 0) {
+        const failedPageNumbers = result.failed.map((f: FailedPage) => f.page + 1).join(", ");
+        if (result.images.length > 0) {
+          alert(
+            `Extracted ${result.images.length} of ${result.total_requested} pages.\n\n` +
+            `Failed pages: ${failedPageNumbers}\n\n` +
+            `This may be due to memory limits. Try extracting fewer pages at once.`
+          );
+        } else {
+          alert(
+            `Failed to extract all pages.\n\n` +
+            `Failed pages: ${failedPageNumbers}\n\n` +
+            `This may be due to memory limits. Try extracting fewer pages at once.`
+          );
+        }
+      }
+
       setShowPdfModal(false);
       setPdfFile(null);
       setPdfPages([]);
       setSelectedPages([]);
     } catch (error) {
       console.error("Failed to extract pages:", error);
-      alert("Failed to extract pages");
+      alert("Failed to extract pages. Try selecting fewer pages at once.");
     } finally {
       setProcessingPdf(false);
     }

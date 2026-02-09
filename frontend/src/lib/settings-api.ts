@@ -8,12 +8,20 @@ export interface HeroSettings {
   subtitle: string;
   cta_primary: string;
   cta_secondary: string;
+  background_image?: string;
+  background_overlay?: number; // 0-100 opacity for dark overlay
 }
 
 export interface Skill {
   name: string;
   category: string;
+  mainCategory?: string;
   level?: number;
+}
+
+export interface SkillCategory {
+  name: string;
+  subcategories: string[];
 }
 
 export interface ContactSettings {
@@ -66,7 +74,7 @@ export interface AppearanceSettings {
 export interface AllSettings {
   hero?: HeroSettings;
   skills?: Skill[];
-  skill_categories?: string[];
+  skill_categories?: string[] | SkillCategory[];
   contact?: ContactSettings;
   footer?: FooterSettings;
   appearance?: AppearanceSettings;
