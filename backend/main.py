@@ -1,6 +1,11 @@
 import os
 from datetime import timedelta
+from urllib.parse import urlencode
 
+from dotenv import load_dotenv
+load_dotenv()
+
+import httpx
 import cloudinary
 import cloudinary.uploader
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form, Response
@@ -406,38 +411,54 @@ async def extract_pdf_pages(
 
 # ============== Project Screenshot ==============
 
+SCREENSHOTONE_ACCESS_KEY = os.getenv("SCREENSHOTONE_ACCESS_KEY")
+
 @app.post("/api/admin/projects/screenshot")
 async def capture_project_screenshot(
     url: str = Form(...),
     current_user: User = Depends(get_current_admin)
 ):
-    """Capture a screenshot of a live URL for project imagery."""
+    """Capture a screenshot of a live URL using ScreenshotOne API."""
     url = url.strip()
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
-    try:
-        from playwright.async_api import async_playwright
-    except Exception as e:
+
+    if not SCREENSHOTONE_ACCESS_KEY:
         raise HTTPException(
             status_code=500,
-            detail=f"Playwright not available: {str(e)}"
+            detail="Screenshot service not configured. Set SCREENSHOTONE_ACCESS_KEY in environment."
         )
 
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            page = await browser.new_page(viewport={"width": 1280, "height": 720})
-            try:
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-            except Exception:
-                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_timeout(2000)
-            image_bytes = await page.screenshot(full_page=True, type="png")
-            await browser.close()
+        params = {
+            "access_key": SCREENSHOTONE_ACCESS_KEY,
+            "url": url,
+            "viewport_width": 1280,
+            "viewport_height": 720,
+            "full_page": "true",
+            "format": "png",
+            "block_ads": "true",
+            "block_cookie_banners": "true",
+            "delay": 2,
+        }
+        api_url = f"https://api.screenshotone.com/take?{urlencode(params)}"
 
-        return Response(content=image_bytes, media_type="image/png")
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.get(api_url)
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Screenshot API error: {response.text}"
+                )
+
+            return Response(content=response.content, media_type="image/png")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=408, detail="Screenshot request timed out")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to capture screenshot: {str(e)}")
 
