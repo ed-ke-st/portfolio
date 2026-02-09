@@ -216,6 +216,15 @@ export default function SettingsPage() {
         border: resolveColor(appearance.border, "#e4e4e7"),
       };
 
+  const appearanceColorKeys = [
+    "accent",
+    "background",
+    "text",
+    "muted",
+    "card",
+    "border",
+  ] as const;
+
   if (loading) {
     return <p className="text-zinc-500">Loading settings...</p>;
   }
@@ -574,46 +583,46 @@ export default function SettingsPage() {
       {activeTab === "appearance" && (
         <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
           <div className="space-y-4">
-            {[
-              { key: "accent", label: "Primary / Accent" },
-              { key: "background", label: "Background" },
-              { key: "text", label: "Text" },
-              { key: "muted", label: "Muted / Secondary" },
-              { key: "card", label: "Card / Surface" },
-              { key: "border", label: "Border" },
-            ].map((field) => (
-              <div key={field.key} className="flex items-center gap-4">
+            {appearanceColorKeys.map((key) => (
+              <div key={key} className="flex items-center gap-4">
                 <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  {field.label}
+                  {{
+                    accent: "Primary / Accent",
+                    background: "Background",
+                    text: "Text",
+                    muted: "Muted / Secondary",
+                    card: "Card / Surface",
+                    border: "Border",
+                  }[key]}
                 </label>
                 <input
                   type="color"
                   value={
-                    isHexColor(appearance[field.key as keyof AppearanceSettings])
-                      ? appearance[field.key as keyof AppearanceSettings]
+                    isHexColor(appearance[key])
+                      ? appearance[key]
                       : "#000000"
                   }
                   onChange={(e) =>
                     setAppearance({
                       ...appearance,
-                      [field.key]: e.target.value,
+                      [key]: e.target.value,
                     })
                   }
                   className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
                 />
                 <input
                   type="text"
-                  value={appearance[field.key as keyof AppearanceSettings]}
+                  value={appearance[key]}
                   onChange={(e) =>
                     setAppearance({
                       ...appearance,
-                      [field.key]: e.target.value,
+                      [key]: e.target.value,
                     })
                   }
                   onBlur={(e) =>
                     setAppearance({
                       ...appearance,
-                      [field.key]: normalizeHex(e.target.value),
+                      [key]: normalizeHex(e.target.value),
                     })
                   }
                   className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
