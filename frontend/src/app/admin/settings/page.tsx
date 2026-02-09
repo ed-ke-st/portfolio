@@ -761,23 +761,23 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
                   Dark Mode Colors
                 </p>
-                {[
-                  { key: "accent", label: "Primary / Accent" },
-                  { key: "background", label: "Background" },
-                  { key: "text", label: "Text" },
-                  { key: "muted", label: "Muted / Secondary" },
-                  { key: "card", label: "Card / Surface" },
-                  { key: "border", label: "Border" },
-                ].map((field) => (
-                  <div key={field.key} className="flex items-center gap-4 mb-3">
+                {appearanceColorKeys.map((key) => (
+                  <div key={key} className="flex items-center gap-4 mb-3">
                     <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      {field.label}
+                      {{
+                        accent: "Primary / Accent",
+                        background: "Background",
+                        text: "Text",
+                        muted: "Muted / Secondary",
+                        card: "Card / Surface",
+                        border: "Border",
+                      }[key]}
                     </label>
                     <input
                       type="color"
                       value={
-                        isHexColor(appearance.dark?.[field.key as keyof AppearanceSettings["dark"]] || "")
-                          ? appearance.dark![field.key as keyof AppearanceSettings["dark"]]!
+                        isHexColor(appearance.dark?.[key] || "")
+                          ? appearance.dark![key]!
                           : "#000000"
                       }
                       onChange={(e) =>
@@ -785,7 +785,7 @@ export default function SettingsPage() {
                           ...appearance,
                           dark: {
                             ...appearance.dark!,
-                            [field.key]: e.target.value,
+                            [key]: e.target.value,
                           },
                         })
                       }
@@ -793,13 +793,13 @@ export default function SettingsPage() {
                     />
                     <input
                       type="text"
-                      value={appearance.dark?.[field.key as keyof AppearanceSettings["dark"]] || ""}
+                      value={appearance.dark?.[key] || ""}
                       onChange={(e) =>
                         setAppearance({
                           ...appearance,
                           dark: {
                             ...appearance.dark!,
-                            [field.key]: e.target.value,
+                            [key]: e.target.value,
                           },
                         })
                       }
@@ -808,7 +808,7 @@ export default function SettingsPage() {
                           ...appearance,
                           dark: {
                             ...appearance.dark!,
-                            [field.key]: normalizeHex(e.target.value),
+                            [key]: normalizeHex(e.target.value),
                           },
                         })
                       }
@@ -821,22 +821,22 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-4 mb-2">
                   Dark Mode Section Overrides
                 </p>
-                {[
-                  { key: "hero", label: "Hero" },
-                  { key: "projects", label: "Projects" },
-                  { key: "designs", label: "Designs" },
-                  { key: "skills", label: "Skills" },
-                  { key: "footer", label: "Footer" },
-                ].map((field) => (
-                  <div key={field.key} className="flex items-center gap-4 mb-3">
+                {["hero", "projects", "designs", "skills", "footer"].map((key) => (
+                  <div key={key} className="flex items-center gap-4 mb-3">
                     <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      {field.label}
+                      {{
+                        hero: "Hero",
+                        projects: "Projects",
+                        designs: "Designs",
+                        skills: "Skills",
+                        footer: "Footer",
+                      }[key as "hero" | "projects" | "designs" | "skills" | "footer"]}
                     </label>
                     <input
                       type="color"
                       value={
-                        isHexColor(appearance.dark?.sections?.[field.key as keyof AppearanceSettings["dark"]["sections"]] || "")
-                          ? appearance.dark!.sections![field.key as keyof AppearanceSettings["dark"]["sections"]]!
+                        isHexColor(appearance.dark?.sections?.[key as "hero" | "projects" | "designs" | "skills" | "footer"] || "")
+                          ? appearance.dark!.sections![key as "hero" | "projects" | "designs" | "skills" | "footer"]!
                           : "#000000"
                       }
                       onChange={(e) =>
@@ -846,7 +846,7 @@ export default function SettingsPage() {
                             ...appearance.dark!,
                             sections: {
                               ...appearance.dark!.sections,
-                              [field.key]: e.target.value,
+                              [key]: e.target.value,
                             },
                           },
                         })
@@ -855,7 +855,7 @@ export default function SettingsPage() {
                     />
                     <input
                       type="text"
-                      value={appearance.dark?.sections?.[field.key as keyof AppearanceSettings["dark"]["sections"]] || ""}
+                      value={appearance.dark?.sections?.[key as "hero" | "projects" | "designs" | "skills" | "footer"] || ""}
                       onChange={(e) =>
                         setAppearance({
                           ...appearance,
@@ -863,7 +863,7 @@ export default function SettingsPage() {
                             ...appearance.dark!,
                             sections: {
                               ...appearance.dark!.sections,
-                              [field.key]: e.target.value,
+                              [key]: e.target.value,
                             },
                           },
                         })
@@ -875,7 +875,7 @@ export default function SettingsPage() {
                             ...appearance.dark!,
                             sections: {
                               ...appearance.dark!.sections,
-                              [field.key]: normalizeHex(e.target.value),
+                              [key]: normalizeHex(e.target.value),
                             },
                           },
                         })
