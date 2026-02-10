@@ -7,7 +7,7 @@ import { getProjectsForUser } from "@/lib/api";
 import { getDesignsForUser } from "@/lib/designs";
 import { getAdminSettings } from "@/lib/settings-api";
 import { getMe, getToken } from "@/lib/auth";
-import { getDomainStatus } from "@/lib/admin-api";
+import { createInvite, getDomainStatus } from "@/lib/admin-api";
 
 export default function AdminDashboard() {
   const params = useParams();
@@ -21,6 +21,9 @@ export default function AdminDashboard() {
   const [appearanceBackground, setAppearanceBackground] = useState<string | null>(null);
   const [heroBackground, setHeroBackground] = useState<string | null>(null);
   const [domainStatus, setDomainStatus] = useState<"not_set" | "unconfigured" | "not_verified" | "verified">("not_set");
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState("");
+  const [creatingInvite, setCreatingInvite] = useState(false);
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -103,6 +106,64 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Invite Card */}
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">Invite Users</p>
+              <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">
+                Generate Invite
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-900/30 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M20 8v6m3-3h-6M8 7a4 4 0 110-8 4 4 0 010 8z" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3">
+            Invite-only signup is enabled.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={async () => {
+                setInviteError("");
+                setCreatingInvite(true);
+                try {
+                  const res = await createInvite(7);
+                  setInviteToken(res.token);
+                  await navigator.clipboard.writeText(res.token);
+                } catch (err) {
+                  setInviteError(err instanceof Error ? err.message : "Failed to create invite");
+                } finally {
+                  setCreatingInvite(false);
+                }
+              }}
+              className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+              disabled={creatingInvite}
+            >
+              {creatingInvite ? "Creating..." : "Create Invite"}
+            </button>
+            {inviteToken && (
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(inviteToken);
+                }}
+                className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200"
+              >
+                Copy
+              </button>
+            )}
+          </div>
+          {inviteToken && (
+            <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 break-all">
+              {inviteToken}
+            </p>
+          )}
+          {inviteError && (
+            <p className="mt-2 text-xs text-red-500">{inviteError}</p>
+          )}
+        </div>
         {/* Integrations Card */}
         <Link
           href={`/${username}/admin/settings?tab=integrations`}

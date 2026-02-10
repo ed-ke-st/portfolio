@@ -280,3 +280,24 @@ export async function getDomainStatus(): Promise<DomainStatus> {
   }
   return res.json();
 }
+
+export async function createInvite(expiresInDays?: number): Promise<{ token: string; expires_at: string | null }> {
+  const token = getToken();
+  const formData = new FormData();
+  if (expiresInDays) {
+    formData.append("expires_in_days", String(expiresInDays));
+  }
+  const res = await fetch(`${API_BASE_URL}/api/admin/invites`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to create invite");
+  }
+  return res.json();
+}
