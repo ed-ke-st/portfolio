@@ -10,6 +10,10 @@ export interface HeroSettings {
   cta_secondary: string;
   background_image?: string;
   background_overlay?: number; // 0-100 opacity for dark overlay
+  use_custom_colors?: boolean;
+  text_color?: string;
+  highlight_color?: string;
+  subtitle_color?: string;
 }
 
 export interface Skill {

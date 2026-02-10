@@ -117,7 +117,7 @@ class SettingResponse(BaseModel):
 class AllSettingsResponse(BaseModel):
     hero: dict | None = None
     skills: list[dict] | None = None
-    skill_categories: list[str] | None = None
+    skill_categories: list[dict] | list[str] | None = None
     contact: dict | None = None
     footer: dict | None = None
     appearance: dict | None = None

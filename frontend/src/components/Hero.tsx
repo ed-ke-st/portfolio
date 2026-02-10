@@ -20,6 +20,26 @@ export default function Hero({ settings, appearance }: HeroProps) {
   const hasBackgroundImage = !!hero.background_image;
   const overlayOpacity = hero.background_overlay ?? 50;
 
+  // Determine text colors - custom colors take priority, then background image (white), then CSS vars
+  const titleColor = hero.use_custom_colors && hero.text_color
+    ? hero.text_color
+    : hasBackgroundImage
+      ? "#ffffff"
+      : undefined;
+
+  const subtitleColor = hero.use_custom_colors && hero.subtitle_color
+    ? hero.subtitle_color
+    : hasBackgroundImage
+      ? "rgba(255,255,255,0.8)"
+      : undefined;
+
+  const highlightColor = hero.use_custom_colors && hero.highlight_color
+    ? hero.highlight_color
+    : undefined;
+
+  const buttonTextColor = hasBackgroundImage ? "#ffffff" : undefined;
+  const buttonBorderColor = hasBackgroundImage ? "rgba(255,255,255,0.3)" : undefined;
+
   return (
     <section
       className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-16 relative"
@@ -40,15 +60,28 @@ export default function Hero({ settings, appearance }: HeroProps) {
       )}
 
       <div className="max-w-4xl mx-auto text-center relative z-10">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-[var(--app-text)] leading-tight">
-          {hero.title}{" "}
-          <span className="text-[var(--app-accent)]">
+        <h1
+          className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight"
+          style={{ color: titleColor }}
+        >
+          <span className={titleColor ? "" : "text-[var(--app-text)]"}>
+            {hero.title}{" "}
+          </span>
+          <span
+            className={highlightColor ? "" : "text-[var(--app-accent)]"}
+            style={highlightColor ? { color: highlightColor } : undefined}
+          >
             {hero.highlight}
           </span>
         </h1>
 
-        <p className="mt-6 text-lg sm:text-xl text-[var(--app-muted)] max-w-2xl mx-auto">
-          {hero.subtitle}
+        <p
+          className="mt-6 text-lg sm:text-xl max-w-2xl mx-auto"
+          style={{ color: subtitleColor }}
+        >
+          <span className={subtitleColor ? "" : "text-[var(--app-muted)]"}>
+            {hero.subtitle}
+          </span>
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
@@ -60,7 +93,10 @@ export default function Hero({ settings, appearance }: HeroProps) {
           </Link>
           <Link
             href="#contact"
-            className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-[var(--app-text)] border border-[var(--app-border)] rounded-full hover:bg-[var(--app-card)] transition-colors"
+            className={`inline-flex items-center justify-center px-8 py-3 text-base font-medium rounded-full hover:opacity-90 transition-colors border ${
+              hasBackgroundImage ? "" : "text-[var(--app-text)] border-[var(--app-border)] hover:bg-[var(--app-card)]"
+            }`}
+            style={hasBackgroundImage ? { color: buttonTextColor, borderColor: buttonBorderColor } : undefined}
           >
             {hero.cta_secondary}
           </Link>

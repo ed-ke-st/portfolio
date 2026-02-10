@@ -13,15 +13,20 @@ import {
 } from "@/lib/settings-api";
 import { uploadFile } from "@/lib/admin-api";
 
-type TabType = "hero" | "skills" | "contact" | "footer" | "appearance";
+type TabType = "appearance" | "skills" | "contact" | "footer";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>("hero");
+  const [activeTab, setActiveTab] = useState<TabType>("appearance");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   const [uploadingHeroBg, setUploadingHeroBg] = useState(false);
+
+  // Preview state
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   // Settings state
   const [hero, setHero] = useState<HeroSettings>({
@@ -32,6 +37,9 @@ export default function SettingsPage() {
     cta_secondary: "",
     background_image: "",
     background_overlay: 50,
+    use_custom_colors: false,
+    text_color: "",
+    subtitle_color: "",
   });
 
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -238,10 +246,9 @@ export default function SettingsPage() {
   };
 
   const tabs = [
-    { id: "hero" as TabType, label: "Hero Section" },
+    { id: "appearance" as TabType, label: "Appearance" },
     { id: "skills" as TabType, label: "Skills" },
     { id: "contact" as TabType, label: "Contact" },
-    { id: "appearance" as TabType, label: "Appearance" },
     { id: "footer" as TabType, label: "Footer" },
   ];
 
@@ -299,12 +306,12 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700">
+      <div className="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === tab.id
                 ? "border-blue-500 text-blue-600 dark:text-blue-400"
                 : "border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
@@ -315,151 +322,553 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Hero Tab */}
-      {activeTab === "hero" && (
-        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Title (before highlight)
-              </label>
-              <input
-                type="text"
-                value={hero.title}
-                onChange={(e) => setHero({ ...hero, title: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Highlight Text (colored)
-              </label>
-              <input
-                type="text"
-                value={hero.highlight}
-                onChange={(e) => setHero({ ...hero, highlight: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Subtitle
-              </label>
-              <textarea
-                value={hero.subtitle}
-                onChange={(e) => setHero({ ...hero, subtitle: e.target.value })}
-                rows={3}
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Primary Button Text
-                </label>
-                <input
-                  type="text"
-                  value={hero.cta_primary}
-                  onChange={(e) => setHero({ ...hero, cta_primary: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Secondary Button Text
-                </label>
-                <input
-                  type="text"
-                  value={hero.cta_secondary}
-                  onChange={(e) => setHero({ ...hero, cta_secondary: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                />
-              </div>
-            </div>
+      {/* Appearance Tab */}
+      {activeTab === "appearance" && (
+        <div className="relative">
+          {/* Mobile Preview Button */}
+          <button
+            onClick={() => setShowMobilePreview(true)}
+            className="lg:hidden fixed bottom-6 right-6 z-40 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+            aria-label="Show preview"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
 
-            {/* Background Image */}
-            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                Background Image (optional)
-              </label>
-              {hero.background_image && (
-                <div className="mb-3 relative inline-block">
-                  <img
-                    src={hero.background_image}
-                    alt="Hero background"
-                    className="h-32 rounded-lg object-cover"
-                  />
+          {/* Mobile Preview Modal */}
+          {showMobilePreview && (
+            <div className="lg:hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-zinc-800 rounded-xl w-full max-w-md overflow-hidden">
+                <div className="p-3 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Preview</p>
                   <button
-                    type="button"
-                    onClick={() => setHero({ ...hero, background_image: "" })}
-                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                    onClick={() => setShowMobilePreview(false)}
+                    className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   >
-                    &times;
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={hero.background_image || ""}
-                  onChange={(e) => setHero({ ...hero, background_image: e.target.value })}
-                  placeholder="Image URL or upload"
-                  className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                />
-                <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white font-medium rounded-lg cursor-pointer transition-colors">
-                  {uploadingHeroBg ? "..." : "Upload"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setUploadingHeroBg(true);
-                      try {
-                        const result = await uploadFile(file);
-                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                        const imageUrl = result.url.startsWith("http")
-                          ? result.url
-                          : `${apiUrl}${result.url}`;
-                        setHero({ ...hero, background_image: imageUrl });
-                      } catch (error) {
-                        console.error("Failed to upload:", error);
-                      } finally {
-                        setUploadingHeroBg(false);
-                      }
-                    }}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              {hero.background_image && (
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Overlay Darkness ({hero.background_overlay ?? 50}%)
-                  </label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={80}
-                    step={5}
-                    value={hero.background_overlay ?? 50}
-                    onChange={(e) => setHero({ ...hero, background_overlay: Number(e.target.value) })}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Adds a dark overlay to improve text readability
-                  </p>
+                <div
+                  className="relative min-h-[200px] flex items-center justify-center p-4"
+                  style={{
+                    background: hero.background_image
+                      ? undefined
+                      : appearance.sections?.hero || previewPalette.background,
+                  }}
+                >
+                  {hero.background_image && (
+                    <>
+                      <img src={hero.background_image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0" style={{ backgroundColor: `rgba(0, 0, 0, ${(hero.background_overlay ?? 50) / 100})` }} />
+                    </>
+                  )}
+                  <div className="relative z-10 text-center">
+                    <h1 className="text-xl font-bold mb-2" style={{ color: hero.use_custom_colors && hero.text_color ? hero.text_color : (hero.background_image ? "#ffffff" : previewPalette.text) }}>
+                      {hero.title || "Hello, I'm"}{" "}
+                      <span style={{ color: hero.use_custom_colors && hero.highlight_color ? hero.highlight_color : previewPalette.accent }}>{hero.highlight || "Your Name"}</span>
+                    </h1>
+                    <p className="text-xs mb-3" style={{ color: hero.use_custom_colors && hero.subtitle_color ? hero.subtitle_color : (hero.background_image ? "rgba(255,255,255,0.8)" : previewPalette.muted) }}>
+                      {hero.subtitle || "A passionate developer"}
+                    </p>
+                    <button className="px-3 py-1 text-xs font-medium text-white rounded-full" style={{ backgroundColor: previewPalette.accent }}>
+                      {hero.cta_primary || "View Projects"}
+                    </button>
+                  </div>
                 </div>
-              )}
+
+                {/* Card Preview */}
+                <div className="p-4" style={{ background: previewPalette.background }}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-3 rounded-lg" style={{ background: previewPalette.card, border: `1px solid ${previewPalette.border}` }}>
+                      <p className="text-[10px]" style={{ color: previewPalette.muted }}>Muted</p>
+                      <p className="text-xs mt-0.5" style={{ color: previewPalette.text }}>Card</p>
+                      <div className="h-1 w-full rounded-full mt-2 overflow-hidden" style={{ background: previewPalette.border }}>
+                        <div className="h-full w-2/3" style={{ background: previewPalette.accent }} />
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg" style={{ background: previewPalette.card, border: `1px solid ${previewPalette.border}` }}>
+                      <p className="text-[10px]" style={{ color: previewPalette.muted }}>Secondary</p>
+                      <p className="text-xs mt-0.5" style={{ color: previewPalette.text }}>Text</p>
+                      <span className="inline-flex mt-2 text-[10px]" style={{ color: previewPalette.accent }}>View →</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Settings Panel */}
+            <div className="space-y-4">
+              {/* Global Colors - Compact Row */}
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Theme Colors</p>
+                  <button
+                    onClick={() => setShowColorPicker(!showColorPicker)}
+                    className="lg:hidden p-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Desktop: Always visible row / Mobile: Collapsible */}
+                <div className={`${showColorPicker ? "block" : "hidden"} lg:block`}>
+                  <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+                    {[
+                      { key: "accent", label: "Accent" },
+                      { key: "background", label: "BG" },
+                      { key: "text", label: "Text" },
+                      { key: "muted", label: "Muted" },
+                      { key: "card", label: "Card" },
+                      { key: "border", label: "Border" },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="text-center">
+                        <input
+                          type="color"
+                          value={isHexColor(appearance[key as keyof typeof appearance] as string) ? appearance[key as keyof typeof appearance] as string : "#000000"}
+                          onChange={(e) => setAppearance({ ...appearance, [key]: e.target.value })}
+                          className="w-full h-8 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                        />
+                        <p className="text-[10px] text-zinc-500 mt-1 truncate">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Hero Background Override */}
+                  <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+                    <div className="flex items-center gap-2">
+                      <div className="text-center">
+                        <input
+                          type="color"
+                          value={isHexColor(appearance.sections?.hero || "") ? appearance.sections!.hero! : previewPalette.background}
+                          onChange={(e) => setAppearance({ ...appearance, sections: { ...appearance.sections, hero: e.target.value } })}
+                          className="w-8 h-8 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={appearance.sections?.hero || ""}
+                        onChange={(e) => setAppearance({ ...appearance, sections: { ...appearance.sections, hero: e.target.value } })}
+                        onBlur={(e) => setAppearance({ ...appearance, sections: { ...appearance.sections, hero: normalizeHex(e.target.value) } })}
+                        className="flex-1 px-2 py-1 text-sm rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        placeholder="Hero BG (optional)"
+                      />
+                      {appearance.sections?.hero && (
+                        <button onClick={() => setAppearance({ ...appearance, sections: { ...appearance.sections, hero: "" } })} className="text-xs text-red-500">Clear</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dark Mode Toggle */}
+                  <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+                    <label className="flex items-center gap-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(appearance.dark_mode)}
+                        onChange={(e) => setAppearance({ ...appearance, dark_mode: e.target.checked })}
+                        className="w-4 h-4 rounded"
+                      />
+                      Enable dark mode
+                    </label>
+                  </div>
+
+                  {/* Section Backgrounds */}
+                  <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+                    <p className="text-xs text-zinc-500 mb-2">Section Backgrounds</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { key: "projects", label: "Projects" },
+                        { key: "designs", label: "Designs" },
+                        { key: "skills", label: "Skills" },
+                        { key: "footer", label: "Footer" },
+                      ].map(({ key, label }) => (
+                        <div key={key} className="text-center">
+                          <input
+                            type="color"
+                            value={isHexColor(appearance.sections?.[key as keyof typeof appearance.sections] || "") ? appearance.sections![key as keyof typeof appearance.sections]! : previewPalette.background}
+                            onChange={(e) => setAppearance({ ...appearance, sections: { ...appearance.sections, [key]: e.target.value } })}
+                            className="w-full h-8 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                          />
+                          <p className="text-[10px] text-zinc-500 mt-1">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dark Mode Colors */}
+                  {appearance.dark_mode && (
+                    <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+                      <p className="text-xs text-zinc-500 mb-2">Dark Mode Colors</p>
+                      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+                        {[
+                          { key: "accent", label: "Accent" },
+                          { key: "background", label: "BG" },
+                          { key: "text", label: "Text" },
+                          { key: "muted", label: "Muted" },
+                          { key: "card", label: "Card" },
+                          { key: "border", label: "Border" },
+                        ].map(({ key, label }) => (
+                          <div key={key} className="text-center">
+                            <input
+                              type="color"
+                              value={isHexColor(appearance.dark?.[key as keyof typeof appearance.dark] as string || "") ? appearance.dark![key as keyof typeof appearance.dark] as string : "#000000"}
+                              onChange={(e) => setAppearance({ ...appearance, dark: { ...appearance.dark!, [key]: e.target.value } })}
+                              className="w-full h-8 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                            />
+                            <p className="text-[10px] text-zinc-500 mt-1">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => handleSave("appearance", appearance)}
+                    disabled={saving}
+                    className="mt-3 w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {saving ? "Saving..." : "Save Colors"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Hero Content */}
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Hero Content</p>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={hero.title}
+                        onChange={(e) => setHero({ ...hero, title: e.target.value })}
+                        placeholder="Hello, I'm"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-1">Highlight</label>
+                      <input
+                        type="text"
+                        value={hero.highlight}
+                        onChange={(e) => setHero({ ...hero, highlight: e.target.value })}
+                        placeholder="Your Name"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Subtitle</label>
+                    <textarea
+                      value={hero.subtitle}
+                      onChange={(e) => setHero({ ...hero, subtitle: e.target.value })}
+                      rows={2}
+                      placeholder="A passionate developer..."
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-1">Primary Button</label>
+                      <input
+                        type="text"
+                        value={hero.cta_primary}
+                        onChange={(e) => setHero({ ...hero, cta_primary: e.target.value })}
+                        placeholder="View Projects"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-1">Secondary Button</label>
+                      <input
+                        type="text"
+                        value={hero.cta_secondary}
+                        onChange={(e) => setHero({ ...hero, cta_secondary: e.target.value })}
+                        placeholder="Contact Me"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom Hero Text Colors */}
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
+                <label className="flex items-center gap-3 mb-3">
+                  <input
+                    type="checkbox"
+                    checked={hero.use_custom_colors || false}
+                    onChange={(e) => setHero({ ...hero, use_custom_colors: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Custom Hero Text Colors</span>
+                </label>
+
+                {hero.use_custom_colors && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-1">Title Color</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={isHexColor(hero.text_color || "") ? hero.text_color! : previewPalette.text}
+                          onChange={(e) => setHero({ ...hero, text_color: e.target.value })}
+                          className="w-10 h-9 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={hero.text_color || ""}
+                          onChange={(e) => setHero({ ...hero, text_color: e.target.value })}
+                          onBlur={(e) => setHero({ ...hero, text_color: normalizeHex(e.target.value) })}
+                          placeholder="Auto"
+                          className="flex-1 px-2 py-1 text-sm rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-1">Highlight Color</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={isHexColor(hero.highlight_color || "") ? hero.highlight_color! : previewPalette.accent}
+                          onChange={(e) => setHero({ ...hero, highlight_color: e.target.value })}
+                          className="w-10 h-9 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={hero.highlight_color || ""}
+                          onChange={(e) => setHero({ ...hero, highlight_color: e.target.value })}
+                          onBlur={(e) => setHero({ ...hero, highlight_color: normalizeHex(e.target.value) })}
+                          placeholder="Accent"
+                          className="flex-1 px-2 py-1 text-sm rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-zinc-500 mb-1">Subtitle Color</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={isHexColor(hero.subtitle_color || "") ? hero.subtitle_color! : previewPalette.muted}
+                          onChange={(e) => setHero({ ...hero, subtitle_color: e.target.value })}
+                          className="w-10 h-9 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={hero.subtitle_color || ""}
+                          onChange={(e) => setHero({ ...hero, subtitle_color: e.target.value })}
+                          onBlur={(e) => setHero({ ...hero, subtitle_color: normalizeHex(e.target.value) })}
+                          placeholder="Auto"
+                          className="flex-1 px-2 py-1 text-sm rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Background Image */}
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Background Image</p>
+                {hero.background_image && (
+                  <div className="mb-3 relative inline-block">
+                    <img src={hero.background_image} alt="Hero background" className="h-24 rounded-lg object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setHero({ ...hero, background_image: "" })}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={hero.background_image || ""}
+                    onChange={(e) => setHero({ ...hero, background_image: e.target.value })}
+                    placeholder="Image URL"
+                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                  <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
+                    {uploadingHeroBg ? "..." : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingHeroBg(true);
+                        try {
+                          const result = await uploadFile(file);
+                          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                          const imageUrl = result.url.startsWith("http") ? result.url : `${apiUrl}${result.url}`;
+                          setHero({ ...hero, background_image: imageUrl });
+                        } catch (error) {
+                          console.error("Failed to upload:", error);
+                        } finally {
+                          setUploadingHeroBg(false);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                {hero.background_image && (
+                  <div className="mt-3">
+                    <label className="block text-xs text-zinc-500 mb-1">Overlay Darkness ({hero.background_overlay ?? 50}%)</label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={80}
+                      step={5}
+                      value={hero.background_overlay ?? 50}
+                      onChange={(e) => setHero({ ...hero, background_overlay: Number(e.target.value) })}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Save Button */}
+              <button
+                onClick={() => handleSave("hero", hero)}
+                disabled={saving}
+                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Hero Settings"}
+              </button>
             </div>
 
-            <button
-              onClick={() => handleSave("hero", hero)}
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Hero Settings"}
-            </button>
+            {/* Live Preview Panel - Sticky on Desktop */}
+            <div className="hidden lg:block">
+              <div className="sticky top-4">
+                <div className="bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                  <div className="p-3 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-between">
+                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Live Preview</p>
+                    <div className="flex gap-1 bg-zinc-200 dark:bg-zinc-700 rounded-lg p-0.5">
+                      <button
+                        onClick={() => setPreviewMode("desktop")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${previewMode === "desktop" ? "bg-white dark:bg-zinc-600 text-zinc-900 dark:text-white shadow-sm" : "text-zinc-600 dark:text-zinc-400"}`}
+                      >
+                        Desktop
+                      </button>
+                      <button
+                        onClick={() => setPreviewMode("mobile")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${previewMode === "mobile" ? "bg-white dark:bg-zinc-600 text-zinc-900 dark:text-white shadow-sm" : "text-zinc-600 dark:text-zinc-400"}`}
+                      >
+                        Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-center p-4 bg-zinc-100 dark:bg-zinc-900">
+                    <div
+                      className={`relative overflow-hidden rounded-lg transition-all duration-300 ${previewMode === "mobile" ? "w-[280px]" : "w-full"}`}
+                      style={{
+                        background: hero.background_image ? undefined : appearance.sections?.hero || previewPalette.background,
+                        minHeight: previewMode === "mobile" ? "300px" : "250px",
+                      }}
+                    >
+                      {hero.background_image && (
+                        <>
+                          <img src={hero.background_image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          <div className="absolute inset-0" style={{ backgroundColor: `rgba(0, 0, 0, ${(hero.background_overlay ?? 50) / 100})` }} />
+                        </>
+                      )}
+
+                      <div className={`relative z-10 h-full flex items-center justify-center ${previewMode === "mobile" ? "p-4" : "p-6"}`}>
+                        <div className="text-center max-w-lg">
+                          <h1
+                            className={`font-bold mb-3 ${previewMode === "mobile" ? "text-lg" : "text-2xl"}`}
+                            style={{
+                              color: hero.use_custom_colors && hero.text_color
+                                ? hero.text_color
+                                : (hero.background_image ? "#ffffff" : previewPalette.text),
+                            }}
+                          >
+                            {hero.title || "Hello, I'm"}{" "}
+                            <span style={{ color: hero.use_custom_colors && hero.highlight_color ? hero.highlight_color : previewPalette.accent }}>
+                              {hero.highlight || "Your Name"}
+                            </span>
+                          </h1>
+                          <p
+                            className={`mb-4 ${previewMode === "mobile" ? "text-xs" : "text-sm"}`}
+                            style={{
+                              color: hero.use_custom_colors && hero.subtitle_color
+                                ? hero.subtitle_color
+                                : (hero.background_image ? "rgba(255,255,255,0.8)" : previewPalette.muted),
+                            }}
+                          >
+                            {hero.subtitle || "A passionate developer creating amazing experiences"}
+                          </p>
+                          <div className={`flex gap-2 justify-center ${previewMode === "mobile" ? "flex-col" : ""}`}>
+                            <button
+                              className={`font-medium text-white rounded-full ${previewMode === "mobile" ? "px-3 py-1.5 text-xs" : "px-4 py-1.5 text-xs"}`}
+                              style={{ backgroundColor: previewPalette.accent }}
+                            >
+                              {hero.cta_primary || "View Projects"}
+                            </button>
+                            <button
+                              className={`font-medium rounded-full border ${previewMode === "mobile" ? "px-3 py-1.5 text-xs" : "px-4 py-1.5 text-xs"}`}
+                              style={{
+                                color: hero.background_image ? "#ffffff" : previewPalette.text,
+                                borderColor: hero.background_image ? "rgba(255,255,255,0.3)" : previewPalette.border,
+                              }}
+                            >
+                              {hero.cta_secondary || "Contact Me"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Preview */}
+                  <div
+                    className="p-4"
+                    style={{ background: previewPalette.background }}
+                  >
+                    <p className="text-xs font-medium mb-3" style={{ color: previewPalette.muted }}>
+                      Components Preview
+                    </p>
+                    <div className={`grid gap-3 ${previewMode === "mobile" ? "grid-cols-1" : "grid-cols-2"}`}>
+                      <div
+                        className="p-4 rounded-lg"
+                        style={{ background: previewPalette.card, border: `1px solid ${previewPalette.border}` }}
+                      >
+                        <p className="text-xs" style={{ color: previewPalette.muted }}>Muted text</p>
+                        <p className="text-sm mt-1" style={{ color: previewPalette.text }}>Card content</p>
+                        <div
+                          className="h-1.5 w-full rounded-full mt-3 overflow-hidden"
+                          style={{ background: previewPalette.border }}
+                        >
+                          <div className="h-full w-2/3" style={{ background: previewPalette.accent }} />
+                        </div>
+                      </div>
+                      <div
+                        className="p-4 rounded-lg"
+                        style={{ background: previewPalette.card, border: `1px solid ${previewPalette.border}` }}
+                      >
+                        <p className="text-xs" style={{ color: previewPalette.muted }}>Secondary</p>
+                        <p className="text-sm mt-1" style={{ color: previewPalette.text }}>Text content</p>
+                        <span className="inline-flex mt-3 text-xs" style={{ color: previewPalette.accent }}>
+                          View more →
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -833,326 +1242,6 @@ export default function SettingsPage() {
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save Contact Settings"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Appearance Tab */}
-      {activeTab === "appearance" && (
-        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
-          <div className="space-y-4">
-            {appearanceColorKeys.map((key) => (
-              <div key={key} className="flex items-center gap-4">
-                <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  {{
-                    accent: "Primary / Accent",
-                    background: "Background",
-                    text: "Text",
-                    muted: "Muted / Secondary",
-                    card: "Card / Surface",
-                    border: "Border",
-                  }[key]}
-                </label>
-                <input
-                  type="color"
-                  value={
-                    isHexColor(appearance[key])
-                      ? appearance[key]
-                      : "#000000"
-                  }
-                  onChange={(e) =>
-                    setAppearance({
-                      ...appearance,
-                      [key]: e.target.value,
-                    })
-                  }
-                  className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
-                />
-                <input
-                  type="text"
-                  value={appearance[key]}
-                  onChange={(e) =>
-                    setAppearance({
-                      ...appearance,
-                      [key]: e.target.value,
-                    })
-                  }
-                  onBlur={(e) =>
-                    setAppearance({
-                      ...appearance,
-                      [key]: normalizeHex(e.target.value),
-                    })
-                  }
-                  className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                  placeholder="#000000"
-                />
-              </div>
-            ))}
-
-            <div className="pt-2">
-              <label className="flex items-center gap-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={Boolean(appearance.dark_mode)}
-                  onChange={(e) =>
-                    setAppearance({ ...appearance, dark_mode: e.target.checked })
-                  }
-                  className="h-4 w-4"
-                />
-                Enable dark mode
-              </label>
-            </div>
-
-            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                Live Preview
-              </p>
-              <div
-                className="rounded-xl p-6 border border-zinc-200 dark:border-zinc-700"
-                style={{
-                  ["--app-accent" as string]: previewPalette.accent,
-                  ["--app-bg" as string]: previewPalette.background,
-                  ["--app-text" as string]: previewPalette.text,
-                  ["--app-muted" as string]: previewPalette.muted,
-                  ["--app-card" as string]: previewPalette.card,
-                  ["--app-border" as string]: previewPalette.border,
-                  background: previewPalette.background,
-                }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-[var(--app-text)]">
-                    Preview
-                  </h3>
-                  <button className="px-3 py-1 text-sm font-medium text-white bg-[var(--app-accent)] rounded-full">
-                    Accent
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg bg-[var(--app-card)] border border-[var(--app-border)]">
-                    <p className="text-sm text-[var(--app-muted)]">Muted text</p>
-                    <p className="text-base text-[var(--app-text)] mt-1">
-                      Card content
-                    </p>
-                    <div className="h-2 w-full bg-[var(--app-border)] rounded-full mt-3 overflow-hidden">
-                      <div className="h-full w-2/3 bg-[var(--app-accent)]" />
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-[var(--app-card)] border border-[var(--app-border)]">
-                    <p className="text-sm text-[var(--app-muted)]">Secondary copy</p>
-                    <p className="text-base text-[var(--app-text)] mt-1">
-                      Accent link
-                    </p>
-                    <span className="inline-flex mt-3 text-sm text-[var(--app-accent)]">
-                      View more →
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                Section Background Overrides
-              </p>
-              {[
-                { key: "hero", label: "Hero" },
-                { key: "projects", label: "Projects" },
-                { key: "designs", label: "Designs" },
-                { key: "skills", label: "Skills" },
-                { key: "footer", label: "Footer" },
-              ].map((field) => (
-                <div key={field.key} className="flex items-center gap-4 mb-3">
-                  <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    {field.label}
-                  </label>
-                  <input
-                    type="color"
-                    value={
-                      isHexColor(appearance.sections?.[field.key as keyof AppearanceSettings["sections"]] || "")
-                        ? appearance.sections![field.key as keyof AppearanceSettings["sections"]]!
-                        : "#ffffff"
-                    }
-                    onChange={(e) =>
-                      setAppearance({
-                        ...appearance,
-                        sections: {
-                          ...appearance.sections,
-                          [field.key]: e.target.value,
-                        },
-                      })
-                    }
-                    className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
-                  />
-                  <input
-                    type="text"
-                    value={appearance.sections?.[field.key as keyof AppearanceSettings["sections"]] || ""}
-                    onChange={(e) =>
-                      setAppearance({
-                        ...appearance,
-                        sections: {
-                          ...appearance.sections,
-                          [field.key]: e.target.value,
-                        },
-                      })
-                    }
-                    onBlur={(e) =>
-                      setAppearance({
-                        ...appearance,
-                        sections: {
-                          ...appearance.sections,
-                          [field.key]: normalizeHex(e.target.value),
-                        },
-                      })
-                    }
-                    className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                    placeholder="Leave empty for default"
-                  />
-                </div>
-              ))}
-              <p className="text-xs text-zinc-500">
-                Leave blank to use the global background.
-              </p>
-            </div>
-
-            {appearance.dark_mode && (
-              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                  Dark Mode Colors
-                </p>
-                {appearanceColorKeys.map((key) => (
-                  <div key={key} className="flex items-center gap-4 mb-3">
-                    <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      {{
-                        accent: "Primary / Accent",
-                        background: "Background",
-                        text: "Text",
-                        muted: "Muted / Secondary",
-                        card: "Card / Surface",
-                        border: "Border",
-                      }[key]}
-                    </label>
-                    <input
-                      type="color"
-                      value={
-                        isHexColor(appearance.dark?.[key] || "")
-                          ? appearance.dark![key]!
-                          : "#000000"
-                      }
-                      onChange={(e) =>
-                        setAppearance({
-                          ...appearance,
-                          dark: {
-                            ...appearance.dark!,
-                            [key]: e.target.value,
-                          },
-                        })
-                      }
-                      className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
-                    />
-                    <input
-                      type="text"
-                      value={appearance.dark?.[key] || ""}
-                      onChange={(e) =>
-                        setAppearance({
-                          ...appearance,
-                          dark: {
-                            ...appearance.dark!,
-                            [key]: e.target.value,
-                          },
-                        })
-                      }
-                      onBlur={(e) =>
-                        setAppearance({
-                          ...appearance,
-                          dark: {
-                            ...appearance.dark!,
-                            [key]: normalizeHex(e.target.value),
-                          },
-                        })
-                      }
-                      className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                      placeholder="#000000"
-                    />
-                  </div>
-                ))}
-
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-4 mb-2">
-                  Dark Mode Section Overrides
-                </p>
-                {["hero", "projects", "designs", "skills", "footer"].map((key) => (
-                  <div key={key} className="flex items-center gap-4 mb-3">
-                    <label className="w-40 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      {{
-                        hero: "Hero",
-                        projects: "Projects",
-                        designs: "Designs",
-                        skills: "Skills",
-                        footer: "Footer",
-                      }[key as "hero" | "projects" | "designs" | "skills" | "footer"]}
-                    </label>
-                    <input
-                      type="color"
-                      value={
-                        isHexColor(appearance.dark?.sections?.[key as "hero" | "projects" | "designs" | "skills" | "footer"] || "")
-                          ? appearance.dark!.sections![key as "hero" | "projects" | "designs" | "skills" | "footer"]!
-                          : "#000000"
-                      }
-                      onChange={(e) =>
-                        setAppearance({
-                          ...appearance,
-                          dark: {
-                            ...appearance.dark!,
-                            sections: {
-                              ...appearance.dark!.sections,
-                              [key]: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                      className="h-10 w-12 border border-zinc-300 dark:border-zinc-600 rounded"
-                    />
-                    <input
-                      type="text"
-                      value={appearance.dark?.sections?.[key as "hero" | "projects" | "designs" | "skills" | "footer"] || ""}
-                      onChange={(e) =>
-                        setAppearance({
-                          ...appearance,
-                          dark: {
-                            ...appearance.dark!,
-                            sections: {
-                              ...appearance.dark!.sections,
-                              [key]: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                      onBlur={(e) =>
-                        setAppearance({
-                          ...appearance,
-                          dark: {
-                            ...appearance.dark!,
-                            sections: {
-                              ...appearance.dark!.sections,
-                              [key]: normalizeHex(e.target.value),
-                            },
-                          },
-                        })
-                      }
-                      className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                      placeholder="Leave empty for default"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={() => handleSave("appearance", appearance)}
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Appearance"}
             </button>
           </div>
         </div>
