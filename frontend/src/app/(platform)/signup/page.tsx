@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteToken, setInviteToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +20,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const user = await register(username, password, email || undefined);
+      const user = await register(username, password, email || undefined, inviteToken || undefined);
       // Auto-login after registration
       const response = await login(username, password);
       setToken(response.access_token);
@@ -98,6 +99,27 @@ export default function SignupPage() {
                 required
                 minLength={6}
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="invite"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5"
+              >
+                Invite Token
+              </label>
+              <input
+                id="invite"
+                type="text"
+                value={inviteToken}
+                onChange={(e) => setInviteToken(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Paste your invite token"
+                required
+              />
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Signup is invite-only right now.
+              </p>
             </div>
 
             {error && (

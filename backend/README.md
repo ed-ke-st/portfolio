@@ -29,5 +29,16 @@ See `.env.example` for all required variables:
 - `ALLOW_ENV_INTEGRATIONS` — allow env vars as a fallback for integrations (default: false)
 - `ALLOW_LOCAL_UPLOADS` — allow local filesystem uploads when Cloudinary isn’t set (default: false)
 - `DOMAIN_CHECK_A` / `DOMAIN_CHECK_CNAME` — optional DNS verification targets for custom domains
+- `REQUIRE_INVITE` — require an invite token to sign up (default: false)
+
+## Invite-only signup
+
+If `REQUIRE_INVITE=true`, users must provide an invite token on signup.
+Create a token with:
+
+```bash
+curl -X POST "$API_URL/api/admin/invites" \
+  -H "Authorization: Bearer $TOKEN"
+```
 - `DATABASE_URL` — Postgres connection string (uses SQLite locally if unset)
 - `SECRET_KEY` — JWT signing key

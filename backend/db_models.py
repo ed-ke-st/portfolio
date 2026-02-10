@@ -19,6 +19,23 @@ class User(Base):
     projects = relationship("Project", back_populates="owner")
     design_works = relationship("DesignWork", back_populates="owner")
     site_settings = relationship("SiteSettings", back_populates="owner")
+    created_invites = relationship("Invite", back_populates="creator", foreign_keys="Invite.created_by_user_id")
+    used_invites = relationship("Invite", back_populates="used_by", foreign_keys="Invite.used_by_user_id")
+
+
+class Invite(Base):
+    __tablename__ = "invites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(128), unique=True, index=True, nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    used_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    creator = relationship("User", foreign_keys=[created_by_user_id], back_populates="created_invites")
+    used_by = relationship("User", foreign_keys=[used_by_user_id], back_populates="used_invites")
 
 
 class SiteSettings(Base):

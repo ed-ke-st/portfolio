@@ -17,6 +17,7 @@ class UserCreate(BaseModel):
     username: str
     password: str
     email: str | None = None
+    invite_token: str | None = None
 
 
 class UserResponse(BaseModel):

@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 import shutil
 import tempfile
 from urllib.parse import urlencode, urlparse
@@ -20,7 +20,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from database import engine, get_db, Base, DATABASE_URL
-from db_models import User, Project, DesignWork, SiteSettings
+from db_models import User, Project, DesignWork, SiteSettings, Invite
 from schemas import (
     Token, UserCreate, UserResponse,
     ProjectCreate, ProjectUpdate, ProjectResponse,
@@ -156,6 +156,7 @@ PDF_EXTRACT_MAX_PAGES = int(os.getenv("PDF_EXTRACT_MAX_PAGES", "20"))
 PDF_EXTRACT_MAX_DIM = int(os.getenv("PDF_EXTRACT_MAX_DIM", "2400"))
 PDF_EXTRACT_FORMAT = os.getenv("PDF_EXTRACT_FORMAT", "jpeg").lower()
 PDF_EXTRACT_QUALITY = int(os.getenv("PDF_EXTRACT_QUALITY", "80"))
+REQUIRE_INVITE = os.getenv("REQUIRE_INVITE", "false").lower() == "true"
 
 app = FastAPI(
     title="Portfolio API",
@@ -296,6 +297,30 @@ async def health_check():
 
 @app.post("/api/auth/register", response_model=UserResponse)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
+    if REQUIRE_INVITE:
+        token = (user.invite_token or "").strip()
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invite token is required."
+            )
+        invite = db.query(Invite).filter(Invite.token == token).first()
+        if not invite:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid invite token."
+            )
+        if invite.used_at is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invite token has already been used."
+            )
+        if invite.expires_at and invite.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invite token has expired."
+            )
+
     # Validate username
     username_lower = user.username.lower().strip()
     if username_lower in RESERVED_USERNAMES:
@@ -332,10 +357,41 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
 
+    if REQUIRE_INVITE:
+        invite.used_by_user_id = db_user.id
+        invite.used_at = datetime.now(timezone.utc)
+        db.commit()
+
     # Seed default settings
     _seed_default_settings(db, db_user.id)
 
     return db_user
+
+
+@app.post("/api/admin/invites")
+async def create_invite(
+    expires_in_days: int | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    import secrets
+
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    token = secrets.token_urlsafe(24)
+    expires_at = None
+    if expires_in_days and expires_in_days > 0:
+        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+
+    invite = Invite(
+        token=token,
+        created_by_user_id=current_user.id,
+        expires_at=expires_at
+    )
+    db.add(invite)
+    db.commit()
+    return {"token": token, "expires_at": invite.expires_at}
 
 
 @app.post("/api/auth/login", response_model=Token)
