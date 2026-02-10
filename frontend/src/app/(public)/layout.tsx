@@ -9,13 +9,14 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   let settings: AllSettings = {};
-  const resolved = resolveAppearance(settings.appearance);
 
   try {
     settings = await getSettings();
   } catch (error) {
     console.error("Failed to fetch settings:", error);
   }
+
+  const resolved = resolveAppearance(settings.appearance);
 
   return (
     <div
