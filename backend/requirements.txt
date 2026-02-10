@@ -28,7 +28,7 @@ mdurl==0.1.2
 orjson==3.11.7
 passlib==1.7.4
 PyMuPDF==1.25.5
-psycopg2-binary==2.9.10
+psycopg[binary]==3.2.13
 pyasn1==0.6.2
 pycparser==3.0
 pydantic==2.12.5

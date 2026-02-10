@@ -4,6 +4,8 @@ export interface User {
   id: number;
   username: string;
   is_admin: boolean;
+  email?: string;
+  custom_domain?: string;
 }
 
 export interface LoginResponse {
@@ -32,13 +34,13 @@ export async function login(username: string, password: string): Promise<LoginRe
   return res.json();
 }
 
-export async function register(username: string, password: string): Promise<User> {
+export async function register(username: string, password: string, email?: string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, email }),
   });
 
   if (!res.ok) {

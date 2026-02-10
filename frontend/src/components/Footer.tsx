@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AppearanceSettings, getSettings, ContactSettings, FooterSettings } from "@/lib/settings-api";
+import { AppearanceSettings, ContactSettings, FooterSettings } from "@/lib/settings-api";
 
 const defaultContact: ContactSettings = {
   heading: "Get in Touch",
@@ -19,9 +18,13 @@ const defaultFooter: FooterSettings = {
   copyright: "Portfolio. All rights reserved.",
 };
 
-export default function Footer({ appearance }: { appearance?: AppearanceSettings }) {
-  const [contact, setContact] = useState<ContactSettings>(defaultContact);
-  const [footer, setFooter] = useState<FooterSettings>(defaultFooter);
+interface FooterProps {
+  appearance?: AppearanceSettings;
+  contact?: ContactSettings;
+  footer?: FooterSettings;
+}
+
+export default function Footer({ appearance, contact: contactProp, footer: footerProp }: FooterProps) {
   const sectionBg = appearance?.sections?.footer;
 
   const formatPhone = (value: string) => {
@@ -35,24 +38,10 @@ export default function Footer({ appearance }: { appearance?: AppearanceSettings
     return value;
   };
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const settings = await getSettings();
-        if (settings.contact) {
-          const formatted = settings.contact.phone
-            ? { ...settings.contact, phone: formatPhone(settings.contact.phone) }
-            : settings.contact;
-          setContact(formatted);
-        }
-        if (settings.footer) setFooter(settings.footer);
-      } catch (error) {
-        console.error("Failed to fetch settings:", error);
-      }
-    };
-
-    fetchSettings();
-  }, []);
+  const contact = contactProp
+    ? (contactProp.phone ? { ...contactProp, phone: formatPhone(contactProp.phone) } : contactProp)
+    : defaultContact;
+  const footer = footerProp || defaultFooter;
 
   return (
     <footer
@@ -126,7 +115,7 @@ export default function Footer({ appearance }: { appearance?: AppearanceSettings
             )}
             {contact.phone && (
               <Link
-                href={`tel:${contact.phone.replace(/\\D/g, "")}`}
+                href={`tel:${contact.phone.replace(/\D/g, "")}`}
                 className="text-[var(--app-muted)] hover:text-[var(--app-text)] transition-colors"
                 aria-label="Phone"
               >

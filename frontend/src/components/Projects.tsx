@@ -18,10 +18,10 @@ export default function Projects({ projects, appearance }: ProjectsProps) {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--app-text)]">
-            Featured Projects
+            Featured Dev Projects
           </h2>
           <p className="mt-4 text-[var(--app-muted)] max-w-2xl mx-auto">
-            A selection of projects I&apos;ve worked on, showcasing my skills in full-stack development
+            A selection of development projects showcasing my full-stack skills
           </p>
         </div>
 

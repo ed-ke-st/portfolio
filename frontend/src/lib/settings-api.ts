@@ -75,6 +75,11 @@ export interface AppearanceSettings {
   };
 }
 
+export interface IntegrationsSettings {
+  cloudinary_url?: string;
+  screenshotone_access_key?: string;
+}
+
 export interface AllSettings {
   hero?: HeroSettings;
   skills?: Skill[];
@@ -82,10 +87,28 @@ export interface AllSettings {
   contact?: ContactSettings;
   footer?: FooterSettings;
   appearance?: AppearanceSettings;
+  integrations?: IntegrationsSettings;
 }
 
-export async function getSettings(): Promise<AllSettings> {
-  const res = await fetch(`${API_BASE_URL}/api/settings`, {
+export async function getSettingsForUser(username: string): Promise<AllSettings> {
+  const res = await fetch(`${API_BASE_URL}/api/u/${username}/settings`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch settings");
+  }
+
+  return res.json();
+}
+
+export async function getAdminSettings(): Promise<AllSettings> {
+  const token = getToken();
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/settings`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
     cache: "no-store",
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useParams } from "next/navigation";
 import Link from "next/link";
 import { getToken, getMe, removeToken, User } from "@/lib/auth";
 
@@ -12,17 +12,22 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const username = params.username as string;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const loginPath = `/${username}/admin/login`;
+  const adminBase = `/${username}/admin`;
 
   useEffect(() => {
     const checkAuth = async () => {
       const token = getToken();
 
       if (!token) {
-        if (pathname !== "/admin/login") {
-          router.push("/admin/login");
+        if (pathname !== loginPath) {
+          router.push(loginPath);
         }
         setLoading(false);
         return;
@@ -30,14 +35,21 @@ export default function AdminLayout({
 
       try {
         const userData = await getMe(token);
+        // Verify the logged-in user matches the URL username
+        if (userData.username !== username) {
+          removeToken();
+          router.push(loginPath);
+          setLoading(false);
+          return;
+        }
         setUser(userData);
-        if (pathname === "/admin/login") {
-          router.push("/admin");
+        if (pathname === loginPath) {
+          router.push(adminBase);
         }
       } catch {
         removeToken();
-        if (pathname !== "/admin/login") {
-          router.push("/admin/login");
+        if (pathname !== loginPath) {
+          router.push(loginPath);
         }
       } finally {
         setLoading(false);
@@ -45,11 +57,11 @@ export default function AdminLayout({
     };
 
     checkAuth();
-  }, [pathname, router]);
+  }, [pathname, router, username, loginPath, adminBase]);
 
   const handleLogout = () => {
     removeToken();
-    router.push("/admin/login");
+    router.push("/login");
   };
 
   if (loading) {
@@ -61,15 +73,15 @@ export default function AdminLayout({
   }
 
   // Login page doesn't need the admin layout
-  if (pathname === "/admin/login") {
+  if (pathname === loginPath) {
     return <>{children}</>;
   }
 
   const navLinks = [
-    { href: "/admin", label: "Dashboard" },
-    { href: "/admin/projects", label: "Projects" },
-    { href: "/admin/designs", label: "Designs" },
-    { href: "/admin/settings", label: "Settings" },
+    { href: adminBase, label: "Dashboard" },
+    { href: `${adminBase}/projects`, label: "Dev Projects" },
+    { href: `${adminBase}/designs`, label: "Design Projects" },
+    { href: `${adminBase}/settings`, label: "Settings" },
   ];
 
   return (
@@ -79,7 +91,7 @@ export default function AdminLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
-              <Link href="/admin" className="text-xl font-bold text-zinc-900 dark:text-white">
+              <Link href={adminBase} className="text-xl font-bold text-zinc-900 dark:text-white">
                 Admin
               </Link>
               {/* Desktop Nav */}
@@ -102,7 +114,7 @@ export default function AdminLayout({
 
             <div className="flex items-center gap-4">
               <Link
-                href="/"
+                href={`/${username}`}
                 target="_blank"
                 className="hidden sm:block text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
               >
@@ -155,7 +167,7 @@ export default function AdminLayout({
                 ))}
                 <hr className="border-zinc-200 dark:border-zinc-700" />
                 <Link
-                  href="/"
+                  href={`/${username}`}
                   target="_blank"
                   className="text-sm text-zinc-600 dark:text-zinc-400"
                 >

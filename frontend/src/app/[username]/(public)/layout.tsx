@@ -1,17 +1,20 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { getSettings, AllSettings } from "@/lib/settings-api";
+import { getSettingsForUser, AllSettings } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
 
 export default async function PublicLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ username: string }>;
 }) {
+  const { username } = await params;
   let settings: AllSettings = {};
 
   try {
-    settings = await getSettings();
+    settings = await getSettingsForUser(username);
   } catch (error) {
     console.error("Failed to fetch settings:", error);
   }
@@ -31,9 +34,13 @@ export default async function PublicLayout({
         ["--foreground" as string]: resolved.active.text,
       }}
     >
-      <Navbar />
+      <Navbar username={username} />
       <main>{children}</main>
-      <Footer appearance={resolved.active} />
+      <Footer
+        appearance={resolved.active}
+        contact={settings.contact}
+        footer={settings.footer}
+      />
     </div>
   );
 }

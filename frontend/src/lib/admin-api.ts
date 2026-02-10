@@ -12,6 +12,15 @@ function authHeaders() {
 }
 
 // Projects
+export async function getAdminProjects(): Promise<Project[]> {
+  // Admin settings endpoint returns user-scoped data via token
+  // But projects don't have an admin list endpoint, so we use the public one via username
+  // Actually, let's just call the user-scoped route after getting the username from /me
+  // For simplicity, admin pages will use the public user-scoped routes
+  // This function is kept for backwards compat but callers should use getProjectsForUser
+  throw new Error("Use getProjectsForUser instead");
+}
+
 export async function createProject(data: Omit<Project, "id">): Promise<Project> {
   const res = await fetch(`${API_BASE_URL}/api/admin/projects`, {
     method: "POST",
@@ -55,16 +64,6 @@ export interface DesignWork {
   year: number | null;
   featured: boolean;
   order: number;
-}
-
-export async function getDesigns(category?: string): Promise<DesignWork[]> {
-  const url = category
-    ? `${API_BASE_URL}/api/designs?category=${category}`
-    : `${API_BASE_URL}/api/designs`;
-
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to fetch designs");
-  return res.json();
 }
 
 export async function createDesign(data: Omit<DesignWork, "id">): Promise<DesignWork> {
@@ -112,7 +111,26 @@ export async function uploadFile(file: File): Promise<{ filename: string; url: s
     body: formData,
   });
 
-  if (!res.ok) throw new Error("Failed to upload file");
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to upload file");
+  }
+  return res.json();
+}
+
+export async function testCloudinary(): Promise<{ ok: boolean }> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE_URL}/api/admin/integrations/cloudinary/test`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Cloudinary test failed");
+  }
   return res.json();
 }
 
@@ -153,6 +171,8 @@ export interface PdfPage {
 export interface PdfPreviewResponse {
   page_count: number;
   pages: PdfPage[];
+  preview_count?: number;
+  truncated?: boolean;
 }
 
 export interface ExtractedImage {
@@ -185,7 +205,10 @@ export async function previewPdf(file: File): Promise<PdfPreviewResponse> {
     body: formData,
   });
 
-  if (!res.ok) throw new Error("Failed to preview PDF");
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to preview PDF");
+  }
   return res.json();
 }
 
@@ -206,6 +229,54 @@ export async function extractPdfPages(
     body: formData,
   });
 
-  if (!res.ok) throw new Error("Failed to extract PDF pages");
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to extract PDF pages");
+  }
+  return res.json();
+}
+
+// Custom Domain
+export async function setCustomDomain(domain: string): Promise<{ message: string; custom_domain: string | null }> {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append("domain", domain);
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/domain`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to set custom domain");
+  }
+  return res.json();
+}
+
+export interface DomainStatus {
+  status: "not_set" | "unconfigured" | "not_verified" | "verified";
+  domain?: string | null;
+  expected_cname?: string | null;
+  expected_a?: string | null;
+  found_cname?: string | null;
+  found_a?: string[];
+}
+
+export async function getDomainStatus(): Promise<DomainStatus> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE_URL}/api/admin/domain/status`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to fetch domain status");
+  }
   return res.json();
 }

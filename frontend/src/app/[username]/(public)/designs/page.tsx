@@ -1,22 +1,22 @@
-import { getDesigns } from "@/lib/designs";
-import { getSettings } from "@/lib/settings-api";
+import { getDesignsForUser } from "@/lib/designs";
+import { getSettingsForUser } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
 import DesignGallery from "@/components/DesignGallery";
 import Link from "next/link";
 import { DesignWork } from "@/types/design";
 
-export const metadata = {
-  title: "Design Work | Portfolio",
-  description: "Logos, branding, and design projects",
-};
-
-export default async function DesignsPage() {
+export default async function DesignsPage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const { username } = await params;
   let designs: DesignWork[] = [];
   let sectionBg = "";
 
   try {
-    designs = await getDesigns();
-    const settings = await getSettings();
+    designs = await getDesignsForUser(username);
+    const settings = await getSettingsForUser(username);
     sectionBg = resolveAppearance(settings.appearance).active.sections?.designs || "";
   } catch (error) {
     console.error("Failed to fetch designs:", error);
@@ -31,7 +31,7 @@ export default async function DesignsPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <Link
-            href="/"
+            href={`/${username}`}
             className="inline-flex items-center gap-1 text-sm text-[var(--app-muted)] hover:text-[var(--app-text)] mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,7 +40,7 @@ export default async function DesignsPage() {
             Back to Home
           </Link>
           <h1 className="text-3xl sm:text-4xl font-bold text-[var(--app-text)]">
-            Design Work
+            Design Projects
           </h1>
           <p className="mt-4 text-[var(--app-muted)] max-w-2xl mx-auto">
             A collection of logos, branding, and visual design projects

@@ -2,23 +2,28 @@ import Hero from "@/components/Hero";
 import Projects from "@/components/Projects";
 import DesignSection from "@/components/DesignSection";
 import TechStack from "@/components/TechStack";
-import { getProjects } from "@/lib/api";
-import { getDesigns } from "@/lib/designs";
-import { getSettings, AllSettings } from "@/lib/settings-api";
+import { getProjectsForUser } from "@/lib/api";
+import { getDesignsForUser } from "@/lib/designs";
+import { getSettingsForUser, AllSettings, SkillCategory } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
 import { Project } from "@/types/project";
 import { DesignWork } from "@/types/design";
 
-export default async function Home() {
+export default async function UserHome({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const { username } = await params;
   let projects: Project[] = [];
   let designs: DesignWork[] = [];
   let settings: AllSettings = {};
 
   try {
     [projects, designs, settings] = await Promise.all([
-      getProjects(),
-      getDesigns(),
-      getSettings(),
+      getProjectsForUser(username),
+      getDesignsForUser(username),
+      getSettingsForUser(username),
     ]);
   } catch (error) {
     console.error("Failed to fetch data:", error);
@@ -29,10 +34,10 @@ export default async function Home() {
     <>
       <Hero settings={settings.hero} appearance={resolved.active} />
       <Projects projects={projects} appearance={resolved.active} />
-      <DesignSection designs={designs} appearance={resolved.active} />
+      <DesignSection designs={designs} appearance={resolved.active} username={username} />
       <TechStack
         skills={settings.skills}
-        skillCategories={settings.skill_categories as import("@/lib/settings-api").SkillCategory[] | undefined}
+        skillCategories={settings.skill_categories as SkillCategory[] | undefined}
         appearance={resolved.active}
       />
     </>

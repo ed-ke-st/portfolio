@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { getDesignsForUser } from "@/lib/designs";
 import {
-  getDesigns,
   createDesign,
   updateDesign,
   deleteDesign,
@@ -13,6 +14,7 @@ import {
   PdfPage,
   FailedPage,
 } from "@/lib/admin-api";
+import IntegrationsRequiredModal from "@/components/IntegrationsRequiredModal";
 
 const CATEGORIES = ["logo", "branding", "ui", "print", "other"];
 
@@ -41,6 +43,8 @@ const emptyForm: DesignFormData = {
 };
 
 export default function DesignsPage() {
+  const params = useParams();
+  const username = params.username as string;
   const [designs, setDesigns] = useState<DesignWork[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -55,11 +59,15 @@ export default function DesignsPage() {
   const [pdfPages, setPdfPages] = useState<PdfPage[]>([]);
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
   const [processingPdf, setProcessingPdf] = useState(false);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
+  const [pdfPreviewTruncated, setPdfPreviewTruncated] = useState(false);
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  const [integrationsModalMessage, setIntegrationsModalMessage] = useState("");
 
   const fetchDesigns = async () => {
     try {
-      const data = await getDesigns();
-      setDesigns(data);
+      const data = await getDesignsForUser(username);
+      setDesigns(data as unknown as DesignWork[]);
     } catch (error) {
       console.error("Failed to fetch designs:", error);
     } finally {
@@ -69,7 +77,7 @@ export default function DesignsPage() {
 
   useEffect(() => {
     fetchDesigns();
-  }, []);
+  }, [username]);
 
   const handleEdit = (design: DesignWork) => {
     setForm({
@@ -146,6 +154,13 @@ export default function DesignsPage() {
       setForm({ ...form, images: [...form.images, ...newUrls] });
     } catch (error) {
       console.error("Failed to upload images:", error);
+      const message = error instanceof Error ? error.message : "Failed to upload images";
+      if (message.toLowerCase().includes("integrations") || message.toLowerCase().includes("cloudinary")) {
+        setIntegrationsModalMessage(message);
+        setShowIntegrationsModal(true);
+      } else {
+        alert(message);
+      }
     } finally {
       setUploading(false);
     }
@@ -163,9 +178,12 @@ export default function DesignsPage() {
     try {
       const result = await previewPdf(file);
       setPdfPages(result.pages);
+      setPdfPageCount(result.page_count || result.pages.length);
+      setPdfPreviewTruncated(Boolean(result.truncated));
     } catch (error) {
       console.error("Failed to preview PDF:", error);
-      alert("Failed to process PDF");
+      const message = error instanceof Error ? error.message : "Failed to process PDF";
+      alert(message);
       setShowPdfModal(false);
     } finally {
       setProcessingPdf(false);
@@ -191,12 +209,10 @@ export default function DesignsPage() {
         img.url.startsWith("http") ? img.url : `${apiUrl}${img.url}`
       );
 
-      // Add successfully extracted images
       if (newUrls.length > 0) {
         setForm({ ...form, images: [...form.images, ...newUrls] });
       }
 
-      // Show results message
       if (result.failed && result.failed.length > 0) {
         const failedPageNumbers = result.failed.map((f: FailedPage) => f.page + 1).join(", ");
         if (result.images.length > 0) {
@@ -218,9 +234,17 @@ export default function DesignsPage() {
       setPdfFile(null);
       setPdfPages([]);
       setSelectedPages([]);
+      setPdfPageCount(0);
+      setPdfPreviewTruncated(false);
     } catch (error) {
       console.error("Failed to extract pages:", error);
-      alert("Failed to extract pages. Try selecting fewer pages at once.");
+      const message = error instanceof Error ? error.message : "Failed to extract pages.";
+      if (message.toLowerCase().includes("integrations") || message.toLowerCase().includes("cloudinary")) {
+        setIntegrationsModalMessage(message);
+        setShowIntegrationsModal(true);
+      } else {
+        alert(`${message} Try selecting fewer pages at once.`);
+      }
     } finally {
       setProcessingPdf(false);
     }
@@ -241,8 +265,14 @@ export default function DesignsPage() {
 
   return (
     <div>
+      <IntegrationsRequiredModal
+        isOpen={showIntegrationsModal}
+        username={username}
+        message={integrationsModalMessage || "This feature requires Cloudinary to be configured."}
+        onClose={() => setShowIntegrationsModal(false)}
+      />
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Designs</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Design Projects</h1>
         <button
           onClick={() => {
             setForm(emptyForm);
@@ -251,7 +281,7 @@ export default function DesignsPage() {
           }}
           className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
         >
-          Add Design
+          Add Design Project
         </button>
       </div>
 
@@ -269,6 +299,8 @@ export default function DesignsPage() {
                   setPdfFile(null);
                   setPdfPages([]);
                   setSelectedPages([]);
+                  setPdfPageCount(0);
+                  setPdfPreviewTruncated(false);
                 }}
                 className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
               >
@@ -280,6 +312,12 @@ export default function DesignsPage() {
               <p className="text-center py-8 text-zinc-500">Processing PDF...</p>
             ) : (
               <>
+                {pdfPreviewTruncated && (
+                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Showing previews for the first {pdfPages.length} of {pdfPageCount} pages.
+                    Large PDFs are limited to reduce memory usage. If you need later pages, try a smaller PDF or split the file.
+                  </div>
+                )}
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 mb-6">
                   {pdfPages.map((page) => (
                     <button
@@ -331,7 +369,7 @@ export default function DesignsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6">
-              {editingId ? "Edit Design" : "New Design"}
+              {editingId ? "Edit Design Project" : "New Design Project"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -408,7 +446,6 @@ export default function DesignsPage() {
                   Images {form.images.length > 0 && <span className="text-zinc-500">(click to set as thumbnail)</span>}
                 </label>
 
-                {/* Image grid */}
                 {form.images.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {form.images.map((url, index) => (
@@ -446,7 +483,6 @@ export default function DesignsPage() {
                   </div>
                 )}
 
-                {/* Upload buttons */}
                 <div className="flex gap-2">
                   <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white font-medium rounded-lg cursor-pointer transition-colors">
                     {uploading ? "Uploading..." : "Upload Images"}
@@ -494,7 +530,7 @@ export default function DesignsPage() {
         </div>
       )}
 
-      {/* Designs Grid */}
+      {/* Design Projects Grid */}
       {loading ? (
         <p className="text-zinc-500">Loading...</p>
       ) : designs.length === 0 ? (

@@ -3,21 +3,26 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const navLinks = [
-  { href: "#projects", label: "Projects" },
-  { href: "#designs", label: "Designs" },
-  { href: "#skills", label: "Skills" },
-  { href: "#contact", label: "Contact" },
-];
+interface NavbarProps {
+  username?: string;
+}
 
-export default function Navbar() {
+export default function Navbar({ username }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  const basePath = username ? `/${username}` : "";
+  const navLinks = [
+    { href: `${basePath}#projects`, label: "Dev Projects" },
+    { href: `${basePath}#designs`, label: "Design Projects" },
+    { href: `${basePath}#skills`, label: "Skills" },
+    { href: `${basePath}#contact`, label: "Contact" },
+  ];
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--app-bg)] backdrop-blur-md border-b border-[var(--app-border)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="text-xl font-bold text-[var(--app-text)]">
+          <Link href={basePath || "/"} className="text-xl font-bold text-[var(--app-text)]">
             Portfolio
           </Link>
 

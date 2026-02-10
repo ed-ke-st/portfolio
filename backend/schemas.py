@@ -16,12 +16,15 @@ class TokenData(BaseModel):
 class UserCreate(BaseModel):
     username: str
     password: str
+    email: str | None = None
 
 
 class UserResponse(BaseModel):
     id: int
     username: str
     is_admin: bool
+    email: str | None = None
+    custom_domain: str | None = None
 
     class Config:
         from_attributes = True
@@ -121,3 +124,4 @@ class AllSettingsResponse(BaseModel):
     contact: dict | None = None
     footer: dict | None = None
     appearance: dict | None = None
+    integrations: dict | None = None

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getProjects } from "@/lib/api";
+import { useParams } from "next/navigation";
+import { getProjectsForUser } from "@/lib/api";
 import {
   createProject,
   updateProject,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/admin-api";
 import { Project } from "@/types/project";
 import Cropper, { Area } from "react-easy-crop";
+import IntegrationsRequiredModal from "@/components/IntegrationsRequiredModal";
 
 interface ProjectFormData {
   title: string;
@@ -35,6 +37,8 @@ const emptyForm: ProjectFormData = {
 };
 
 export default function ProjectsPage() {
+  const params = useParams();
+  const username = params.username as string;
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -49,10 +53,12 @@ export default function ProjectsPage() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  const [integrationsModalMessage, setIntegrationsModalMessage] = useState("");
 
   const fetchProjects = async () => {
     try {
-      const data = await getProjects();
+      const data = await getProjectsForUser(username);
       setProjects(data);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
@@ -63,7 +69,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [username]);
 
   const handleEdit = (project: Project) => {
     setForm({
@@ -131,14 +137,19 @@ export default function ProjectsPage() {
     setUploading(true);
     try {
       const result = await uploadFile(file);
-      // If URL starts with http, it's already a full URL (Cloudinary)
-      // Otherwise, prepend the API URL (local uploads)
       const imageUrl = result.url.startsWith("http")
         ? result.url
         : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
       setForm({ ...form, image_url: imageUrl });
     } catch (error) {
       console.error("Failed to upload image:", error);
+      const message = error instanceof Error ? error.message : "Failed to upload image";
+      if (message.toLowerCase().includes("integrations") || message.toLowerCase().includes("cloudinary")) {
+        setIntegrationsModalMessage(message);
+        setShowIntegrationsModal(true);
+      } else {
+        alert(message);
+      }
     } finally {
       setUploading(false);
     }
@@ -150,7 +161,6 @@ export default function ProjectsPage() {
     try {
       const blob = await captureProjectScreenshot(form.live_url);
       const objectUrl = URL.createObjectURL(blob);
-      // Clean up any previous screenshot
       if (originalScreenshotSrc) URL.revokeObjectURL(originalScreenshotSrc);
       setScreenshotSrc(objectUrl);
       setOriginalScreenshotSrc(objectUrl);
@@ -161,7 +171,12 @@ export default function ProjectsPage() {
     } catch (error) {
       console.error("Failed to capture screenshot:", error);
       const message = error instanceof Error ? error.message : "Failed to capture screenshot";
-      alert(message);
+      if (message.toLowerCase().includes("integrations") || message.toLowerCase().includes("screenshot")) {
+        setIntegrationsModalMessage(message);
+        setShowIntegrationsModal(true);
+      } else {
+        alert(message);
+      }
     } finally {
       setCapturing(false);
     }
@@ -222,10 +237,16 @@ export default function ProjectsPage() {
         : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
       setForm({ ...form, image_url: imageUrl });
       setShowCropModal(false);
-      // Keep originalScreenshotSrc for potential recrop - only clear screenshotSrc
       setScreenshotSrc(null);
     } catch (error) {
       console.error("Failed to upload cropped screenshot:", error);
+      const message = error instanceof Error ? error.message : "Failed to upload screenshot";
+      if (message.toLowerCase().includes("integrations") || message.toLowerCase().includes("cloudinary")) {
+        setIntegrationsModalMessage(message);
+        setShowIntegrationsModal(true);
+      } else {
+        alert(message);
+      }
     } finally {
       setUploading(false);
     }
@@ -239,8 +260,14 @@ export default function ProjectsPage() {
 
   return (
     <div>
+      <IntegrationsRequiredModal
+        isOpen={showIntegrationsModal}
+        username={username}
+        message={integrationsModalMessage || "This feature requires Cloudinary to be configured."}
+        onClose={() => setShowIntegrationsModal(false)}
+      />
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Projects</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Dev Projects</h1>
         <button
           onClick={() => {
             setForm(emptyForm);
@@ -249,7 +276,7 @@ export default function ProjectsPage() {
           }}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
         >
-          Add Project
+          Add Dev Project
         </button>
       </div>
 
@@ -258,7 +285,7 @@ export default function ProjectsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6">
-              {editingId ? "Edit Project" : "New Project"}
+              {editingId ? "Edit Dev Project" : "New Dev Project"}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -455,7 +482,7 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Projects List */}
+      {/* Dev Projects List */}
       {loading ? (
         <p className="text-zinc-500">Loading...</p>
       ) : projects.length === 0 ? (

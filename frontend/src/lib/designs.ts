@@ -2,10 +2,10 @@ import { DesignWork } from "@/types/design";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export async function getDesigns(category?: string): Promise<DesignWork[]> {
+export async function getDesignsForUser(username: string, category?: string): Promise<DesignWork[]> {
   const url = category
-    ? `${API_BASE_URL}/api/designs?category=${category}`
-    : `${API_BASE_URL}/api/designs`;
+    ? `${API_BASE_URL}/api/u/${username}/designs?category=${category}`
+    : `${API_BASE_URL}/api/u/${username}/designs`;
 
   const res = await fetch(url, { cache: "no-store" });
 
@@ -16,8 +16,8 @@ export async function getDesigns(category?: string): Promise<DesignWork[]> {
   return res.json();
 }
 
-export async function getDesign(id: number): Promise<DesignWork> {
-  const res = await fetch(`${API_BASE_URL}/api/designs/${id}`, {
+export async function getDesignForUser(username: string, id: number): Promise<DesignWork> {
+  const res = await fetch(`${API_BASE_URL}/api/u/${username}/designs/${id}`, {
     cache: "no-store",
   });
 

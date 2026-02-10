@@ -2,8 +2,8 @@ import { Project } from "@/types/project";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export async function getProjects(): Promise<Project[]> {
-  const res = await fetch(`${API_BASE_URL}/api/projects`, {
+export async function getProjectsForUser(username: string): Promise<Project[]> {
+  const res = await fetch(`${API_BASE_URL}/api/u/${username}/projects`, {
     cache: "no-store",
   });
 
@@ -14,8 +14,8 @@ export async function getProjects(): Promise<Project[]> {
   return res.json();
 }
 
-export async function getProject(id: number): Promise<Project> {
-  const res = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
+export async function getProjectForUser(username: string, id: number): Promise<Project> {
+  const res = await fetch(`${API_BASE_URL}/api/u/${username}/projects/${id}`, {
     cache: "no-store",
   });
 
