@@ -85,6 +85,7 @@ export interface CVSettings {
   summary: string;
   location: string;
   website: string;
+  photo_url?: string;
   pdf_url?: string;
   experience: CVExperience[];
   education: CVEducation[];

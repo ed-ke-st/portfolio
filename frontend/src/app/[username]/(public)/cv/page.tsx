@@ -35,6 +35,9 @@ export default async function CVPage({
   const contact = settings.contact;
   const skills = settings.skills || [];
   const skillCategories = settings.skill_categories as SkillCategory[] | undefined;
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const generatedPdfUrl = `${apiBaseUrl}/api/u/${username}/cv/pdf`;
+  const downloadPdfUrl = cv?.pdf_url || generatedPdfUrl;
 
   if (!cv?.enabled) {
     return (
@@ -72,7 +75,7 @@ export default async function CVPage({
           style={{ background: resolved.active.card, borderColor: resolved.active.border }}
         >
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1">
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--app-muted)]">
                 {cv.title || "Curriculum Vitae"}
               </p>
@@ -86,6 +89,16 @@ export default async function CVPage({
                 <p className="text-sm text-[var(--app-muted)]">{cv.location}</p>
               )}
             </div>
+            {cv.photo_url && (
+              <div className="shrink-0">
+                <img
+                  src={cv.photo_url}
+                  alt={`${heroName} photo`}
+                  className="w-24 h-24 rounded-xl object-cover border"
+                  style={{ borderColor: resolved.active.border }}
+                />
+              </div>
+            )}
             <div className="flex flex-col gap-2 text-sm">
               {contact?.email && (
                 <a className="text-[var(--app-text)]" href={`mailto:${contact.email}`}>
@@ -112,15 +125,13 @@ export default async function CVPage({
                   {cv.website}
                 </a>
               )}
-              {cv.pdf_url && (
-                <a
-                  className="inline-flex items-center gap-2 text-[var(--app-text)] underline"
-                  href={cv.pdf_url}
-                  download
-                >
-                  Download PDF
-                </a>
-              )}
+              <a
+                className="inline-flex items-center gap-2 text-[var(--app-text)] underline"
+                href={downloadPdfUrl}
+                download
+              >
+                {cv.pdf_url ? "Download PDF" : "Generate PDF"}
+              </a>
             </div>
           </div>
 

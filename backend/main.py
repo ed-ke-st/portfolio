@@ -2,6 +2,7 @@ import os
 from datetime import timedelta, datetime, timezone
 import shutil
 import tempfile
+import textwrap
 from urllib.parse import urlencode, urlparse
 
 from dotenv import load_dotenv
@@ -299,6 +300,7 @@ def _seed_default_settings(db: Session, user_id: int) -> None:
             "summary": "",
             "location": "",
             "website": "",
+            "photo_url": "",
             "pdf_url": "",
             "experience": [],
             "education": [],
@@ -598,6 +600,233 @@ async def get_user_setting(username: str, key: str, db: Session = Depends(get_db
     if not setting:
         raise HTTPException(status_code=404, detail="Setting not found")
     return {"key": setting.key, "value": setting.value}
+
+
+@app.get("/api/u/{username}/cv/pdf")
+async def get_user_cv_pdf(username: str, db: Session = Depends(get_db)):
+    user = get_user_by_username_or_404(username, db)
+    cv_setting = (
+        db.query(SiteSettings)
+        .filter(SiteSettings.user_id == user.id, SiteSettings.key == "cv")
+        .first()
+    )
+    if not cv_setting or not isinstance(cv_setting.value, dict):
+        raise HTTPException(status_code=404, detail="CV not found")
+
+    cv = cv_setting.value
+    if not cv.get("enabled"):
+        raise HTTPException(status_code=404, detail="CV is not published")
+
+    hero_setting = (
+        db.query(SiteSettings)
+        .filter(SiteSettings.user_id == user.id, SiteSettings.key == "hero")
+        .first()
+    )
+    contact_setting = (
+        db.query(SiteSettings)
+        .filter(SiteSettings.user_id == user.id, SiteSettings.key == "contact")
+        .first()
+    )
+
+    hero = hero_setting.value if hero_setting and isinstance(hero_setting.value, dict) else {}
+    contact = contact_setting.value if contact_setting and isinstance(contact_setting.value, dict) else {}
+    display_name = (hero.get("highlight") or user.username or "").strip()
+
+    import fitz  # PyMuPDF
+
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)  # A4-ish
+    margin = 48.0
+    line_width = page.rect.width - (margin * 2)
+    y = margin
+
+    def new_page() -> None:
+        nonlocal page, y
+        page = doc.new_page(width=595, height=842)
+        y = margin
+
+    def ensure_space(height: float) -> None:
+        if y + height > page.rect.height - margin:
+            new_page()
+
+    def wrap_lines(text: str, fontsize: float, width: float) -> list[str]:
+        if not text:
+            return []
+        char_width = max(28, int(width / max(4.5, fontsize * 0.55)))
+        lines: list[str] = []
+        for para in str(text).splitlines() or [""]:
+            wrapped = textwrap.wrap(para, width=char_width) or [""]
+            lines.extend(wrapped)
+        return lines
+
+    def draw_text(
+        text: str,
+        *,
+        fontsize: float = 11,
+        bold: bool = False,
+        color: tuple[float, float, float] = (0, 0, 0),
+        indent: float = 0,
+        after: float = 6,
+        max_width: float | None = None,
+    ) -> None:
+        nonlocal y
+        clean = (text or "").strip()
+        if not clean:
+            return
+        width = max_width if max_width is not None else (line_width - indent)
+        lines = wrap_lines(clean, fontsize, width)
+        line_height = fontsize * 1.35
+        ensure_space((len(lines) * line_height) + after)
+        font = "helvB" if bold else "helv"
+        x = margin + indent
+        for line in lines:
+            page.insert_text((x, y + fontsize), line, fontsize=fontsize, fontname=font, color=color)
+            y += line_height
+        y += after
+
+    photo_size = 96.0
+    header_width = line_width
+    photo_url = (cv.get("photo_url") or "").strip()
+    if photo_url:
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                resp = await client.get(photo_url)
+                if resp.status_code < 400:
+                    photo_rect = fitz.Rect(
+                        page.rect.width - margin - photo_size,
+                        y,
+                        page.rect.width - margin,
+                        y + photo_size,
+                    )
+                    page.insert_image(photo_rect, stream=resp.content, keep_proportion=True)
+                    header_width = line_width - photo_size - 16
+        except Exception:
+            pass
+
+    draw_text(cv.get("title") or "Curriculum Vitae", fontsize=10, bold=True, color=(0.35, 0.35, 0.35), max_width=header_width)
+    draw_text(display_name, fontsize=22, bold=True, max_width=header_width, after=4)
+    draw_text(cv.get("headline") or "", fontsize=13, color=(0.35, 0.35, 0.35), max_width=header_width, after=3)
+    draw_text(cv.get("location") or "", fontsize=10, color=(0.4, 0.4, 0.4), max_width=header_width, after=6)
+
+    if header_width < line_width:
+        y = max(y, margin + photo_size + 6)
+
+    contact_rows = [
+        (contact.get("email") or "").strip(),
+        (contact.get("phone") or "").strip(),
+        (contact.get("linkedin") or "").strip(),
+        (contact.get("github") or "").strip(),
+        (cv.get("website") or "").strip(),
+    ]
+    for row in [r for r in contact_rows if r]:
+        draw_text(row, fontsize=10, color=(0.2, 0.2, 0.2), after=2)
+
+    if cv.get("summary"):
+        y += 4
+        draw_text(cv.get("summary") or "", fontsize=10.5, color=(0.25, 0.25, 0.25), after=8)
+
+    def draw_section_title(title: str) -> None:
+        nonlocal y
+        y += 4
+        draw_text(title, fontsize=15, bold=True, after=6)
+
+    experience = cv.get("experience") if isinstance(cv.get("experience"), list) else []
+    if experience:
+        draw_section_title("Experience")
+        for item in experience:
+            if not isinstance(item, dict):
+                continue
+            role = (item.get("role") or "").strip()
+            company = (item.get("company") or "").strip()
+            heading = " | ".join([v for v in [role, company] if v])
+            if heading:
+                draw_text(heading, fontsize=11.5, bold=True, after=2)
+            meta = " | ".join(
+                [
+                    v for v in [
+                        (item.get("location") or "").strip(),
+                        " - ".join([v for v in [(item.get("start") or "").strip(), (item.get("end") or "Present").strip()] if v]).strip(" -"),
+                    ] if v
+                ]
+            )
+            if meta:
+                draw_text(meta, fontsize=9.5, color=(0.45, 0.45, 0.45), after=3)
+            draw_text((item.get("summary") or "").strip(), fontsize=10, after=3)
+            highlights = item.get("highlights") if isinstance(item.get("highlights"), list) else []
+            for bullet in [str(h).strip() for h in highlights if str(h).strip()]:
+                draw_text(f"- {bullet}", fontsize=9.5, indent=8, after=1)
+            y += 4
+
+    education = cv.get("education") if isinstance(cv.get("education"), list) else []
+    if education:
+        draw_section_title("Education")
+        for item in education:
+            if not isinstance(item, dict):
+                continue
+            degree = (item.get("degree") or "").strip()
+            institution = (item.get("institution") or "").strip()
+            heading = " | ".join([v for v in [degree, institution] if v])
+            if heading:
+                draw_text(heading, fontsize=11, bold=True, after=2)
+            meta = " | ".join(
+                [v for v in [(item.get("field") or "").strip(), (item.get("location") or "").strip()] if v]
+            )
+            if meta:
+                draw_text(meta, fontsize=9.5, color=(0.45, 0.45, 0.45), after=2)
+            date_range = " - ".join([v for v in [(item.get("start") or "").strip(), (item.get("end") or "").strip()] if v])
+            if date_range:
+                draw_text(date_range, fontsize=9.5, color=(0.45, 0.45, 0.45), after=2)
+            draw_text((item.get("summary") or "").strip(), fontsize=9.5, after=4)
+
+    certifications = cv.get("certifications") if isinstance(cv.get("certifications"), list) else []
+    if certifications:
+        draw_section_title("Certifications")
+        for item in certifications:
+            if not isinstance(item, dict):
+                continue
+            name = (item.get("name") or "").strip()
+            issuer = (item.get("issuer") or "").strip()
+            year = (item.get("year") or "").strip()
+            heading = " | ".join([v for v in [name, issuer, year] if v])
+            draw_text(heading, fontsize=10, after=2)
+
+    awards = cv.get("awards") if isinstance(cv.get("awards"), list) else []
+    if awards:
+        draw_section_title("Awards")
+        for item in awards:
+            if not isinstance(item, dict):
+                continue
+            title = (item.get("title") or "").strip()
+            issuer = (item.get("issuer") or "").strip()
+            year = (item.get("year") or "").strip()
+            heading = " | ".join([v for v in [title, issuer, year] if v])
+            draw_text(heading, fontsize=10.5, bold=True, after=2)
+            draw_text((item.get("description") or "").strip(), fontsize=9.5, after=3)
+
+    featured_projects = (
+        db.query(Project)
+        .filter(Project.user_id == user.id, Project.featured == True)  # noqa: E712
+        .order_by(Project.order, Project.id.desc())
+        .limit(4)
+        .all()
+    )
+    if featured_projects:
+        draw_section_title("Selected Projects")
+        for project in featured_projects:
+            draw_text(project.title, fontsize=10.5, bold=True, after=2)
+            draw_text(project.description, fontsize=9.5, color=(0.25, 0.25, 0.25), after=2)
+            links = [v for v in [project.live_url, project.github_link] if v]
+            if links:
+                draw_text(" | ".join(links), fontsize=8.8, color=(0.2, 0.2, 0.2), after=4)
+
+    pdf_bytes = doc.write()
+    doc.close()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{username}-cv.pdf"'},
+    )
 
 
 def _get_platform_hero_for_user(db: Session, user_id: int) -> dict:

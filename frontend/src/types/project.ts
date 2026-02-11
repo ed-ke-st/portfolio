@@ -6,4 +6,5 @@ export interface Project {
   image_url: string | null;
   github_link: string | null;
   live_url: string | null;
+  featured: boolean;
 }

@@ -106,6 +106,7 @@ export default function SettingsPage() {
     summary: "",
     location: "",
     website: "",
+    photo_url: "",
     pdf_url: "",
     experience: [],
     education: [],
@@ -235,22 +236,23 @@ export default function SettingsPage() {
         }
         if (data.contact) setContact(data.contact);
         if (data.cv) {
+          const cvData = data.cv;
           setCv((prev) => ({
             ...prev,
-            ...data.cv,
-            experience: (data.cv.experience || []).map((item: CVExperience) => ({
+            ...cvData,
+            experience: (cvData.experience || []).map((item: CVExperience) => ({
               id: item.id || createItemId(),
               ...item,
             })),
-            education: (data.cv.education || []).map((item: CVEducation) => ({
+            education: (cvData.education || []).map((item: CVEducation) => ({
               id: item.id || createItemId(),
               ...item,
             })),
-            certifications: (data.cv.certifications || []).map((item: CVCertification) => ({
+            certifications: (cvData.certifications || []).map((item: CVCertification) => ({
               id: item.id || createItemId(),
               ...item,
             })),
-            awards: (data.cv.awards || []).map((item: CVAward) => ({
+            awards: (cvData.awards || []).map((item: CVAward) => ({
               id: item.id || createItemId(),
               ...item,
             })),
@@ -853,6 +855,46 @@ export default function SettingsPage() {
                     rows={4}
                     className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Photo URL</label>
+                  <div className="flex flex-wrap gap-2 items-start">
+                    <input
+                      type="url"
+                      value={cv.photo_url || ""}
+                      onChange={(e) => setCv({ ...cv, photo_url: e.target.value })}
+                      className="flex-1 min-w-[200px] px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      placeholder="https://..."
+                    />
+                    <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
+                      Upload Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const result = await uploadFile(file);
+                            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                            const imageUrl = result.url.startsWith("http") ? result.url : `${apiUrl}${result.url}`;
+                            setCv({ ...cv, photo_url: imageUrl });
+                          } catch (error) {
+                            console.error("Failed to upload photo:", error);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  {cv.photo_url && (
+                    <img
+                      src={cv.photo_url}
+                      alt="CV photo preview"
+                      className="mt-3 h-20 w-20 object-cover rounded-lg border border-zinc-300 dark:border-zinc-600"
+                    />
+                  )}
                 </div>
 
                 <div>
