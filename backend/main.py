@@ -108,8 +108,9 @@ def _migrate_to_multi_tenant() -> None:
             conn.execute(text("ALTER TABLE design_works ALTER COLUMN user_id SET NOT NULL"))
             conn.execute(text("ALTER TABLE site_settings ALTER COLUMN user_id SET NOT NULL"))
 
-            # Drop old unique constraint on site_settings.key, add composite
+            # Drop old unique constraint/index on site_settings.key, add composite
             conn.execute(text("ALTER TABLE site_settings DROP CONSTRAINT IF EXISTS site_settings_key_key"))
+            conn.execute(text("DROP INDEX IF EXISTS ix_site_settings_key"))
             conn.execute(text(
                 "ALTER TABLE site_settings ADD CONSTRAINT uq_user_setting UNIQUE (user_id, key)"
             ))
@@ -138,6 +139,16 @@ def _migrate_to_multi_tenant() -> None:
 
 
 ensure_schema()
+
+
+# Fix: Drop old unique index on site_settings.key that breaks multi-tenant
+def fix_site_settings_index():
+    if "postgresql" in str(engine.url):
+        with engine.begin() as conn:
+            conn.execute(text("DROP INDEX IF EXISTS ix_site_settings_key"))
+
+
+fix_site_settings_index()
 
 # Cloudinary configuration
 DEFAULT_CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
