@@ -29,7 +29,7 @@ from schemas import (
 )
 from auth import (
     get_password_hash, authenticate_user, create_access_token,
-    get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
+    get_current_user, get_current_super_admin, ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from tenant import get_user_by_username_or_404, get_user_by_domain
 
@@ -67,10 +67,14 @@ def ensure_schema() -> None:
 
     if "users" in table_names:
         columns = {col["name"] for col in inspector.get_columns("users")}
-        if "custom_domain" not in columns:
-            with engine.begin() as conn:
+        with engine.begin() as conn:
+            if "custom_domain" not in columns:
                 conn.execute(text("ALTER TABLE users ADD COLUMN custom_domain VARCHAR(255)"))
+            if "email" not in columns:
                 conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(255)"))
+            if "super_admin" not in columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN super_admin BOOLEAN DEFAULT FALSE"))
+            conn.execute(text("UPDATE users SET super_admin = FALSE WHERE super_admin IS NULL"))
 
 
 def _migrate_to_multi_tenant() -> None:
@@ -168,6 +172,20 @@ PDF_EXTRACT_MAX_DIM = int(os.getenv("PDF_EXTRACT_MAX_DIM", "2400"))
 PDF_EXTRACT_FORMAT = os.getenv("PDF_EXTRACT_FORMAT", "jpeg").lower()
 PDF_EXTRACT_QUALITY = int(os.getenv("PDF_EXTRACT_QUALITY", "80"))
 REQUIRE_INVITE = os.getenv("REQUIRE_INVITE", "false").lower() == "true"
+
+PLATFORM_HERO_DEFAULT = {
+    "title": "Your portfolio,",
+    "highlight": "your way",
+    "subtitle": "Create a beautiful developer portfolio in minutes. Showcase your projects, designs, and skills — all from one simple dashboard.",
+    "cta_primary": "Get started free",
+    "cta_secondary": "Log in",
+    "background_image": "",
+    "background_overlay": 45,
+    "use_custom_colors": False,
+    "text_color": "",
+    "highlight_color": "",
+    "subtitle_color": "",
+}
 
 app = FastAPI(
     title="Portfolio API",
@@ -362,6 +380,7 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
         username=username_lower,
         hashed_password=get_password_hash(user.password),
         is_admin=True,
+        super_admin=False,
         email=user.email,
     )
     db.add(db_user)
@@ -565,6 +584,61 @@ async def get_user_setting(username: str, key: str, db: Session = Depends(get_db
     if not setting:
         raise HTTPException(status_code=404, detail="Setting not found")
     return {"key": setting.key, "value": setting.value}
+
+
+def _get_platform_hero_for_user(db: Session, user_id: int) -> dict:
+    setting = (
+        db.query(SiteSettings)
+        .filter(SiteSettings.user_id == user_id, SiteSettings.key == "platform_hero")
+        .first()
+    )
+    if setting and isinstance(setting.value, dict):
+        return setting.value
+    return PLATFORM_HERO_DEFAULT
+
+
+@app.get("/api/platform/hero")
+async def get_platform_hero(db: Session = Depends(get_db)):
+    super_admin_user = (
+        db.query(User)
+        .filter(User.super_admin.is_(True))
+        .order_by(User.id.asc())
+        .first()
+    )
+    if not super_admin_user:
+        return PLATFORM_HERO_DEFAULT
+    return _get_platform_hero_for_user(db, super_admin_user.id)
+
+
+@app.get("/api/superadmin/platform/hero")
+async def get_super_admin_platform_hero(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin)
+):
+    return _get_platform_hero_for_user(db, current_user.id)
+
+
+@app.put("/api/superadmin/platform/hero", response_model=SettingResponse)
+async def update_super_admin_platform_hero(
+    data: SettingUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_super_admin)
+):
+    setting = (
+        db.query(SiteSettings)
+        .filter(SiteSettings.user_id == current_user.id, SiteSettings.key == "platform_hero")
+        .first()
+    )
+
+    if setting:
+        setting.value = data.value
+    else:
+        setting = SiteSettings(key="platform_hero", value=data.value, user_id=current_user.id)
+        db.add(setting)
+
+    db.commit()
+    db.refresh(setting)
+    return setting
 
 
 # ============== Admin Projects (Scoped to authenticated user) ==============
@@ -1147,6 +1221,11 @@ async def get_domain_status(
         "expected_a": expected_a or None,
         "found_cname": None,
         "found_a": [],
+        "site_status": "unchecked",
+        "site_checks": {
+            "https": None,
+            "http": None,
+        },
     }
 
     try:
@@ -1167,5 +1246,29 @@ async def get_domain_status(
 
     if cname_ok or a_ok:
         result["status"] = "verified"
+
+        reachable = False
+        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+            for scheme in ("https", "http"):
+                url = f"{scheme}://{domain}"
+                try:
+                    response = await client.get(
+                        url,
+                        headers={"User-Agent": "folio-domain-check/1.0"},
+                    )
+                    ok = response.status_code < 500
+                    result["site_checks"][scheme] = {
+                        "ok": ok,
+                        "status_code": response.status_code,
+                    }
+                    if ok:
+                        reachable = True
+                except Exception as exc:
+                    result["site_checks"][scheme] = {
+                        "ok": False,
+                        "error": exc.__class__.__name__,
+                    }
+
+        result["site_status"] = "reachable" if reachable else "propagating"
 
     return result

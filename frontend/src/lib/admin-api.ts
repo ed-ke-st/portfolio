@@ -264,6 +264,25 @@ export interface DomainStatus {
   expected_a?: string | null;
   found_cname?: string | null;
   found_a?: string[];
+  site_status?: "unchecked" | "propagating" | "reachable";
+  site_checks?: {
+    https?: { ok: boolean; status_code?: number; error?: string } | null;
+    http?: { ok: boolean; status_code?: number; error?: string } | null;
+  };
+}
+
+export interface PlatformHeroSettings {
+  title: string;
+  highlight: string;
+  subtitle: string;
+  cta_primary: string;
+  cta_secondary: string;
+  background_image?: string;
+  background_overlay?: number;
+  use_custom_colors?: boolean;
+  text_color?: string;
+  highlight_color?: string;
+  subtitle_color?: string;
 }
 
 export async function getDomainStatus(): Promise<DomainStatus> {
@@ -279,6 +298,39 @@ export async function getDomainStatus(): Promise<DomainStatus> {
     throw new Error(error.detail || "Failed to fetch domain status");
   }
   return res.json();
+}
+
+export async function getSuperAdminPlatformHero(): Promise<PlatformHeroSettings> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE_URL}/api/superadmin/platform/hero`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to fetch platform hero settings");
+  }
+  return res.json();
+}
+
+export async function updateSuperAdminPlatformHero(value: PlatformHeroSettings): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE_URL}/api/superadmin/platform/hero`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ value }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to update platform hero settings");
+  }
 }
 
 export interface Invite {

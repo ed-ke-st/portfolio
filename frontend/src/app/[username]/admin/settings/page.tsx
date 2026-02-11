@@ -13,10 +13,32 @@ import {
   AppearanceSettings,
   IntegrationsSettings,
 } from "@/lib/settings-api";
-import { uploadFile, setCustomDomain, testCloudinary, getDomainStatus } from "@/lib/admin-api";
+import {
+  uploadFile,
+  setCustomDomain,
+  testCloudinary,
+  getDomainStatus,
+  getSuperAdminPlatformHero,
+  updateSuperAdminPlatformHero,
+  PlatformHeroSettings,
+} from "@/lib/admin-api";
 import { getMe, getToken, User } from "@/lib/auth";
 
-type TabType = "appearance" | "skills" | "contact" | "footer" | "integrations" | "domain";
+type TabType = "appearance" | "skills" | "contact" | "footer" | "integrations" | "domain" | "platform";
+
+const defaultPlatformHero: PlatformHeroSettings = {
+  title: "Your portfolio,",
+  highlight: "your way",
+  subtitle: "Create a beautiful developer portfolio in minutes. Showcase your projects, designs, and skills — all from one simple dashboard.",
+  cta_primary: "Get started free",
+  cta_secondary: "Log in",
+  background_image: "",
+  background_overlay: 45,
+  use_custom_colors: false,
+  text_color: "",
+  highlight_color: "",
+  subtitle_color: "",
+};
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -39,6 +61,13 @@ export default function SettingsPage() {
   const [domainStatus, setDomainStatus] = useState<"not_set" | "unconfigured" | "not_verified" | "verified">("not_set");
   const [domainExpectedA, setDomainExpectedA] = useState<string | null>(null);
   const [domainExpectedCname, setDomainExpectedCname] = useState<string | null>(null);
+  const [domainSiteStatus, setDomainSiteStatus] = useState<"unchecked" | "propagating" | "reachable">("unchecked");
+  const [domainSiteChecks, setDomainSiteChecks] = useState<{
+    https?: { ok: boolean; status_code?: number; error?: string } | null;
+    http?: { ok: boolean; status_code?: number; error?: string } | null;
+  } | null>(null);
+  const [platformHero, setPlatformHero] = useState<PlatformHeroSettings>(defaultPlatformHero);
+  const [uploadingPlatformHeroBg, setUploadingPlatformHeroBg] = useState(false);
   const isApexDomain = domainValue && !domainValue.includes(".")
     ? false
     : Boolean(domainValue && domainValue.split(".").length === 2);
@@ -120,7 +149,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["appearance", "skills", "contact", "footer", "integrations", "domain"].includes(tab)) {
+    if (tab && ["appearance", "skills", "contact", "footer", "integrations", "domain", "platform"].includes(tab)) {
       setActiveTab(tab as TabType);
     }
   }, [searchParams]);
@@ -134,11 +163,21 @@ export default function SettingsPage() {
           const user = await getMe(token);
           setCurrentUser(user);
           setDomainValue(user.custom_domain || "");
+          if (user.super_admin) {
+            try {
+              const superHero = await getSuperAdminPlatformHero();
+              setPlatformHero({ ...defaultPlatformHero, ...superHero });
+            } catch (err) {
+              console.error("Failed to fetch platform hero settings:", err);
+            }
+          }
           try {
             const status = await getDomainStatus();
             setDomainStatus(status.status);
             setDomainExpectedA(status.expected_a || null);
             setDomainExpectedCname(status.expected_cname || null);
+            setDomainSiteStatus(status.site_status || "unchecked");
+            setDomainSiteChecks(status.site_checks || null);
           } catch (err) {
             console.error("Failed to fetch domain status:", err);
           }
@@ -206,6 +245,12 @@ export default function SettingsPage() {
 
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "platform" && currentUser && !currentUser.super_admin) {
+      setActiveTab("appearance");
+    }
+  }, [activeTab, currentUser]);
 
   const handleSave = async (key: string, value: unknown) => {
     setSaving(true);
@@ -313,6 +358,9 @@ export default function SettingsPage() {
     { id: "footer" as TabType, label: "Footer" },
     { id: "integrations" as TabType, label: "Integrations" },
     { id: "domain" as TabType, label: "Domain" },
+    ...(currentUser?.super_admin
+      ? [{ id: "platform" as TabType, label: "Platform Hero" }]
+      : []),
   ];
 
   const isHexColor = (value: string) => /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
@@ -1009,11 +1057,25 @@ export default function SettingsPage() {
               {domainStatus !== "not_set" && (
                 <p className={`text-xs mb-2 ${domainStatus === "verified" ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
                   {domainStatus === "verified"
-                    ? "✓ Domain verified and active"
+                    ? "✓ Domain DNS records verified"
                     : domainStatus === "unconfigured"
                       ? "⚠ DNS verification not configured on server"
                       : "⏳ Awaiting DNS verification"}
                 </p>
+              )}
+              {domainStatus === "verified" && (
+                <div className={`text-xs mb-2 ${domainSiteStatus === "reachable" ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
+                  <p>
+                    {domainSiteStatus === "reachable"
+                      ? "✓ Domain is responding publicly"
+                      : "⏳ DNS is verified, but public traffic may still be propagating (SSL/caching can lag)"}
+                  </p>
+                  {domainSiteChecks && (
+                    <p className="text-zinc-500 dark:text-zinc-400 mt-1">
+                      HTTPS: {domainSiteChecks.https?.status_code ?? domainSiteChecks.https?.error ?? "-"} | HTTP: {domainSiteChecks.http?.status_code ?? domainSiteChecks.http?.error ?? "-"}
+                    </p>
+                  )}
+                </div>
               )}
               <input
                 type="text"
@@ -1063,6 +1125,8 @@ export default function SettingsPage() {
                     setDomainStatus(status.status);
                     setDomainExpectedA(status.expected_a || null);
                     setDomainExpectedCname(status.expected_cname || null);
+                    setDomainSiteStatus(status.site_status || "unchecked");
+                    setDomainSiteChecks(status.site_checks || null);
                   } catch (err) {
                     console.error("Failed to refresh domain status:", err);
                   }
@@ -1082,6 +1146,8 @@ export default function SettingsPage() {
                       setDomainStatus("not_set");
                       setDomainExpectedA(null);
                       setDomainExpectedCname(null);
+                      setDomainSiteStatus("unchecked");
+                      setDomainSiteChecks(null);
                       setMessage("Domain removed");
                       setTimeout(() => setMessage(""), 3000);
                     } catch {
@@ -1097,6 +1163,200 @@ export default function SettingsPage() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Platform Hero Tab (Super Admin only) */}
+      {activeTab === "platform" && currentUser?.super_admin && (
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Landing Page Hero</p>
+              <p className="text-xs text-zinc-500">
+                This controls the public homepage at <span className="font-mono">/</span>.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={platformHero.title}
+                  onChange={(e) => setPlatformHero({ ...platformHero, title: e.target.value })}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Highlight</label>
+                <input
+                  type="text"
+                  value={platformHero.highlight}
+                  onChange={(e) => setPlatformHero({ ...platformHero, highlight: e.target.value })}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Subtitle</label>
+              <textarea
+                value={platformHero.subtitle}
+                onChange={(e) => setPlatformHero({ ...platformHero, subtitle: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Primary Button</label>
+                <input
+                  type="text"
+                  value={platformHero.cta_primary}
+                  onChange={(e) => setPlatformHero({ ...platformHero, cta_primary: e.target.value })}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Secondary Button</label>
+                <input
+                  type="text"
+                  value={platformHero.cta_secondary}
+                  onChange={(e) => setPlatformHero({ ...platformHero, cta_secondary: e.target.value })}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+              <label className="flex items-center gap-3 mb-3">
+                <input
+                  type="checkbox"
+                  checked={platformHero.use_custom_colors || false}
+                  onChange={(e) => setPlatformHero({ ...platformHero, use_custom_colors: e.target.checked })}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Use Custom Text Colors</span>
+              </label>
+              {platformHero.use_custom_colors && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { key: "text_color", label: "Title", fallback: "#111827" },
+                    { key: "highlight_color", label: "Highlight", fallback: "#2563eb" },
+                    { key: "subtitle_color", label: "Subtitle", fallback: "#6b7280" },
+                  ].map(({ key, label, fallback }) => (
+                    <div key={key}>
+                      <label className="block text-xs text-zinc-500 mb-1">{label}</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={isHexColor(platformHero[key as keyof PlatformHeroSettings] as string || "")
+                            ? platformHero[key as keyof PlatformHeroSettings] as string
+                            : fallback}
+                          onChange={(e) => setPlatformHero({ ...platformHero, [key]: e.target.value })}
+                          className="w-10 h-9 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={(platformHero[key as keyof PlatformHeroSettings] as string) || ""}
+                          onChange={(e) => setPlatformHero({ ...platformHero, [key]: e.target.value })}
+                          onBlur={(e) => setPlatformHero({ ...platformHero, [key]: normalizeHex(e.target.value) })}
+                          placeholder="Auto"
+                          className="flex-1 px-2 py-1 text-sm rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p className="text-xs text-zinc-500 mb-1">Background Image URL</p>
+              {platformHero.background_image && (
+                <div className="mb-2 relative inline-block">
+                  <img src={platformHero.background_image} alt="Platform hero background" className="h-24 rounded-lg object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPlatformHero({ ...platformHero, background_image: "" })}
+                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={platformHero.background_image || ""}
+                  onChange={(e) => setPlatformHero({ ...platformHero, background_image: e.target.value })}
+                  className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  placeholder="https://..."
+                />
+                <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
+                  {uploadingPlatformHeroBg ? "..." : "Upload"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingPlatformHeroBg(true);
+                      try {
+                        const result = await uploadFile(file);
+                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                        const imageUrl = result.url.startsWith("http") ? result.url : `${apiUrl}${result.url}`;
+                        setPlatformHero({ ...platformHero, background_image: imageUrl });
+                      } catch (error) {
+                        setMessage(error instanceof Error ? error.message : "Failed to upload image");
+                      } finally {
+                        setUploadingPlatformHeroBg(false);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {platformHero.background_image && (
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">
+                  Overlay Darkness ({platformHero.background_overlay ?? 45}%)
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={80}
+                  step={5}
+                  value={platformHero.background_overlay ?? 45}
+                  onChange={(e) => setPlatformHero({ ...platformHero, background_overlay: Number(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+            )}
+
+            <button
+              onClick={async () => {
+                setSaving(true);
+                setMessage("");
+                try {
+                  await updateSuperAdminPlatformHero(platformHero);
+                  setMessage("Platform hero saved!");
+                  setTimeout(() => setMessage(""), 3000);
+                } catch (error) {
+                  setMessage(error instanceof Error ? error.message : "Failed to save platform hero");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Platform Hero"}
+            </button>
           </div>
         </div>
       )}

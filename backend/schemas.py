@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     is_admin: bool
+    super_admin: bool
     email: str | None = None
     custom_domain: str | None = None
 

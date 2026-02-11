@@ -87,3 +87,12 @@ async def get_current_admin(current_user: User = Depends(get_current_user)) -> U
             detail="Not enough permissions"
         )
     return current_user
+
+
+async def get_current_super_admin(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super admin access required"
+        )
+    return current_user
