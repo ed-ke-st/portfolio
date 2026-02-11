@@ -957,6 +957,72 @@ async def delete_setting(
 
 # ============== Custom Domain ==============
 
+# Vercel API integration for programmatic domain management
+VERCEL_TOKEN = os.getenv("VERCEL_TOKEN", "")
+VERCEL_PROJECT_ID = os.getenv("VERCEL_PROJECT_ID", "")
+VERCEL_TEAM_ID = os.getenv("VERCEL_TEAM_ID", "")
+
+
+async def add_domain_to_vercel(domain: str) -> dict:
+    """Add a domain to the Vercel project."""
+    if not VERCEL_TOKEN or not VERCEL_PROJECT_ID:
+        return {"ok": False, "error": "Vercel integration not configured"}
+
+    url = f"https://api.vercel.com/v10/projects/{VERCEL_PROJECT_ID}/domains"
+    if VERCEL_TEAM_ID:
+        url += f"?teamId={VERCEL_TEAM_ID}"
+
+    headers = {
+        "Authorization": f"Bearer {VERCEL_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                headers=headers,
+                json={"name": domain},
+                timeout=30.0,
+            )
+            if response.status_code in (200, 201):
+                return {"ok": True, "data": response.json()}
+            elif response.status_code == 409:
+                # Domain already exists
+                return {"ok": True, "data": {"name": domain, "already_exists": True}}
+            else:
+                return {"ok": False, "error": response.text, "status": response.status_code}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+async def remove_domain_from_vercel(domain: str) -> dict:
+    """Remove a domain from the Vercel project."""
+    if not VERCEL_TOKEN or not VERCEL_PROJECT_ID:
+        return {"ok": False, "error": "Vercel integration not configured"}
+
+    url = f"https://api.vercel.com/v10/projects/{VERCEL_PROJECT_ID}/domains/{domain}"
+    if VERCEL_TEAM_ID:
+        url += f"?teamId={VERCEL_TEAM_ID}"
+
+    headers = {
+        "Authorization": f"Bearer {VERCEL_TOKEN}",
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(url, headers=headers, timeout=30.0)
+            if response.status_code in (200, 204):
+                return {"ok": True}
+            elif response.status_code == 404:
+                # Domain doesn't exist, that's fine
+                return {"ok": True}
+            else:
+                return {"ok": False, "error": response.text, "status": response.status_code}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 @app.put("/api/admin/domain")
 async def set_custom_domain(
     domain: str = Form(""),
@@ -964,9 +1030,13 @@ async def set_custom_domain(
     current_user: User = Depends(get_current_user)
 ):
     domain = domain.strip().lower()
+    old_domain = current_user.custom_domain
 
     if not domain:
         # Clear custom domain
+        if old_domain:
+            # Remove from Vercel
+            await remove_domain_from_vercel(old_domain)
         current_user.custom_domain = None
         db.commit()
         return {"message": "Custom domain cleared", "custom_domain": None}
@@ -981,6 +1051,21 @@ async def set_custom_domain(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This domain is already in use by another user."
         )
+
+    # Add to Vercel
+    vercel_result = await add_domain_to_vercel(domain)
+    if not vercel_result.get("ok"):
+        error_msg = vercel_result.get("error", "Failed to add domain to Vercel")
+        # If Vercel integration isn't configured, still allow setting domain (for testing)
+        if "not configured" not in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to configure domain: {error_msg}"
+            )
+
+    # Remove old domain from Vercel if different
+    if old_domain and old_domain != domain:
+        await remove_domain_from_vercel(old_domain)
 
     current_user.custom_domain = domain
     db.commit()

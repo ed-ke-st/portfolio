@@ -1003,16 +1003,16 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Custom Domain</p>
               <p className="text-xs text-zinc-500 mb-3">
-                Point your domain&apos;s DNS to our servers, then enter it here.
+                Enter your domain below to connect it to your portfolio. After saving, configure the DNS records shown to complete the setup.
                 Your portfolio will be accessible at both folio.skin/{currentUser?.username} and your custom domain.
               </p>
               {domainStatus !== "not_set" && (
                 <p className={`text-xs mb-2 ${domainStatus === "verified" ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
                   {domainStatus === "verified"
-                    ? "Domain verified"
+                    ? "✓ Domain verified and active"
                     : domainStatus === "unconfigured"
-                      ? "Verification targets not configured"
-                      : "Verification pending"}
+                      ? "⚠ DNS verification not configured on server"
+                      : "⏳ Awaiting DNS verification"}
                 </p>
               )}
               <input
@@ -1020,35 +1020,53 @@ export default function SettingsPage() {
                 value={domainValue}
                 onChange={(e) => setDomainValue(e.target.value.toLowerCase())}
                 className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                placeholder="yourdomain.com"
+                placeholder="yourdomain.com or subdomain.yourdomain.com"
               />
               {domainStatus !== "verified" && (domainExpectedA || domainExpectedCname) && (
                 <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-3 text-xs text-zinc-600 dark:text-zinc-300">
-                  <p className="font-medium text-zinc-700 dark:text-zinc-200">Verification pending</p>
+                  <p className="font-medium text-zinc-700 dark:text-zinc-200">DNS Configuration Required</p>
                   <p className="mt-1">
-                    Add the DNS record below (nameserver change is optional):
+                    Add this DNS record at your domain registrar:
                   </p>
                   {isApexDomain && domainExpectedA && (
-                    <p className="mt-2">
-                      <span className="font-medium">A</span> → <span className="font-mono">{domainExpectedA}</span>
-                    </p>
+                    <div className="mt-2 p-2 bg-zinc-100 dark:bg-zinc-800 rounded font-mono">
+                      <p><span className="text-zinc-500">Type:</span> <span className="font-medium">A</span></p>
+                      <p><span className="text-zinc-500">Name:</span> <span className="font-medium">@</span></p>
+                      <p><span className="text-zinc-500">Value:</span> <span className="font-medium">{domainExpectedA}</span></p>
+                    </div>
                   )}
                   {!isApexDomain && domainExpectedCname && (
-                    <p className="mt-1">
-                      <span className="font-medium">CNAME</span> → <span className="font-mono">{domainExpectedCname}</span>
-                    </p>
+                    <div className="mt-2 p-2 bg-zinc-100 dark:bg-zinc-800 rounded font-mono">
+                      <p><span className="text-zinc-500">Type:</span> <span className="font-medium">CNAME</span></p>
+                      <p><span className="text-zinc-500">Name:</span> <span className="font-medium">{domainValue.split(".")[0]}</span></p>
+                      <p><span className="text-zinc-500">Value:</span> <span className="font-medium">{domainExpectedCname}</span></p>
+                    </div>
                   )}
                   {!isApexDomain && !domainExpectedCname && domainExpectedA && (
-                    <p className="mt-2">
-                      <span className="font-medium">A</span> → <span className="font-mono">{domainExpectedA}</span>
-                    </p>
+                    <div className="mt-2 p-2 bg-zinc-100 dark:bg-zinc-800 rounded font-mono">
+                      <p><span className="text-zinc-500">Type:</span> <span className="font-medium">A</span></p>
+                      <p><span className="text-zinc-500">Name:</span> <span className="font-medium">{domainValue.split(".")[0]}</span></p>
+                      <p><span className="text-zinc-500">Value:</span> <span className="font-medium">{domainExpectedA}</span></p>
+                    </div>
                   )}
+                  <p className="mt-2 text-zinc-500">DNS changes can take up to 48 hours to propagate.</p>
                 </div>
               )}
             </div>
             <div className="flex gap-3">
               <button
-                onClick={handleSaveDomain}
+                onClick={async () => {
+                  await handleSaveDomain();
+                  // Refresh domain status after saving
+                  try {
+                    const status = await getDomainStatus();
+                    setDomainStatus(status.status);
+                    setDomainExpectedA(status.expected_a || null);
+                    setDomainExpectedCname(status.expected_cname || null);
+                  } catch (err) {
+                    console.error("Failed to refresh domain status:", err);
+                  }
+                }}
                 disabled={saving}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
               >
@@ -1061,10 +1079,13 @@ export default function SettingsPage() {
                     setSaving(true);
                     try {
                       await setCustomDomain("");
-                      setMessage("Domain cleared");
+                      setDomainStatus("not_set");
+                      setDomainExpectedA(null);
+                      setDomainExpectedCname(null);
+                      setMessage("Domain removed");
                       setTimeout(() => setMessage(""), 3000);
                     } catch {
-                      setMessage("Failed to clear domain");
+                      setMessage("Failed to remove domain");
                     } finally {
                       setSaving(false);
                     }
