@@ -1,45 +1,33 @@
 import Link from "next/link";
+import { get } from "@vercel/edge-config";
+import { defaultPlatformHero, normalizePlatformHero, PlatformHeroSettings } from "@/lib/platform-config";
 
-interface PlatformHeroSettings {
-  title: string;
-  highlight: string;
-  subtitle: string;
-  cta_primary: string;
-  cta_secondary: string;
-  background_image?: string;
-  background_overlay?: number;
-  use_custom_colors?: boolean;
-  text_color?: string;
-  highlight_color?: string;
-  subtitle_color?: string;
+interface EdgePlatformConfig {
+  hero?: Partial<PlatformHeroSettings>;
 }
 
-const defaultHero: PlatformHeroSettings = {
-  title: "Your portfolio,",
-  highlight: "your way",
-  subtitle:
-    "Create a beautiful developer portfolio in minutes. Showcase your projects, designs, and skills — all from one simple dashboard.",
-  cta_primary: "Get started free",
-  cta_secondary: "Log in",
-  background_image: "",
-  background_overlay: 45,
-  use_custom_colors: false,
-  text_color: "",
-  highlight_color: "",
-  subtitle_color: "",
-};
-
 async function getPlatformHero(): Promise<PlatformHeroSettings> {
+  if (process.env.EDGE_CONFIG) {
+    try {
+      const platform = await get<EdgePlatformConfig>("platform");
+      if (platform?.hero) {
+        return normalizePlatformHero(platform.hero);
+      }
+    } catch {
+      // Fallback to API source of truth if Edge Config is unavailable.
+    }
+  }
+
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   try {
     const res = await fetch(`${apiBaseUrl}/api/platform/hero`, {
       cache: "no-store",
     });
-    if (!res.ok) return defaultHero;
+    if (!res.ok) return defaultPlatformHero;
     const data = await res.json();
-    return { ...defaultHero, ...data };
+    return normalizePlatformHero(data);
   } catch {
-    return defaultHero;
+    return defaultPlatformHero;
   }
 }
 

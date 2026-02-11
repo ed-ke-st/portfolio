@@ -15,30 +15,18 @@ import {
 } from "@/lib/settings-api";
 import {
   uploadFile,
+  uploadPlatformImageToBlob,
   setCustomDomain,
+  syncPlatformConfigToEdge,
   testCloudinary,
   getDomainStatus,
   getSuperAdminPlatformHero,
   updateSuperAdminPlatformHero,
-  PlatformHeroSettings,
 } from "@/lib/admin-api";
 import { getMe, getToken, User } from "@/lib/auth";
+import { defaultPlatformHero, PlatformHeroSettings } from "@/lib/platform-config";
 
 type TabType = "appearance" | "skills" | "contact" | "footer" | "integrations" | "domain" | "platform";
-
-const defaultPlatformHero: PlatformHeroSettings = {
-  title: "Your portfolio,",
-  highlight: "your way",
-  subtitle: "Create a beautiful developer portfolio in minutes. Showcase your projects, designs, and skills — all from one simple dashboard.",
-  cta_primary: "Get started free",
-  cta_secondary: "Log in",
-  background_image: "",
-  background_overlay: 45,
-  use_custom_colors: false,
-  text_color: "",
-  highlight_color: "",
-  subtitle_color: "",
-};
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -1305,10 +1293,8 @@ export default function SettingsPage() {
                       if (!file) return;
                       setUploadingPlatformHeroBg(true);
                       try {
-                        const result = await uploadFile(file);
-                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                        const imageUrl = result.url.startsWith("http") ? result.url : `${apiUrl}${result.url}`;
-                        setPlatformHero({ ...platformHero, background_image: imageUrl });
+                        const result = await uploadPlatformImageToBlob(file);
+                        setPlatformHero({ ...platformHero, background_image: result.url });
                       } catch (error) {
                         setMessage(error instanceof Error ? error.message : "Failed to upload image");
                       } finally {
@@ -1344,7 +1330,8 @@ export default function SettingsPage() {
                 setMessage("");
                 try {
                   await updateSuperAdminPlatformHero(platformHero);
-                  setMessage("Platform hero saved!");
+                  const syncResult = await syncPlatformConfigToEdge(platformHero);
+                  setMessage(syncResult.synced ? "Platform hero saved and synced to Edge Config." : `Platform hero saved. ${syncResult.reason || ""}`);
                   setTimeout(() => setMessage(""), 3000);
                 } catch (error) {
                   setMessage(error instanceof Error ? error.message : "Failed to save platform hero");

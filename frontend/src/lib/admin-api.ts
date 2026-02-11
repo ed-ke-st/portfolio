@@ -1,5 +1,6 @@
 import { Project } from "@/types/project";
 import { getToken } from "./auth";
+import { PlatformHeroSettings } from "./platform-config";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -271,20 +272,6 @@ export interface DomainStatus {
   };
 }
 
-export interface PlatformHeroSettings {
-  title: string;
-  highlight: string;
-  subtitle: string;
-  cta_primary: string;
-  cta_secondary: string;
-  background_image?: string;
-  background_overlay?: number;
-  use_custom_colors?: boolean;
-  text_color?: string;
-  highlight_color?: string;
-  subtitle_color?: string;
-}
-
 export async function getDomainStatus(): Promise<DomainStatus> {
   const token = getToken();
   const res = await fetch(`${API_BASE_URL}/api/admin/domain/status`, {
@@ -331,6 +318,44 @@ export async function updateSuperAdminPlatformHero(value: PlatformHeroSettings):
     const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || "Failed to update platform hero settings");
   }
+}
+
+export async function syncPlatformConfigToEdge(value: PlatformHeroSettings): Promise<{ synced: boolean; reason?: string }> {
+  const token = getToken();
+  const res = await fetch("/api/superadmin/platform/sync", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ hero: value }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to sync platform config to Edge Config");
+  }
+  return res.json();
+}
+
+export async function uploadPlatformImageToBlob(file: File): Promise<{ url: string; pathname: string }> {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/superadmin/platform/blob-upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to upload image to Vercel Blob");
+  }
+  return res.json();
 }
 
 export interface Invite {
