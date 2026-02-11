@@ -7,7 +7,7 @@ import { getProjectsForUser } from "@/lib/api";
 import { getDesignsForUser } from "@/lib/designs";
 import { getAdminSettings } from "@/lib/settings-api";
 import { getMe, getToken } from "@/lib/auth";
-import { createInvite, getDomainStatus } from "@/lib/admin-api";
+import { createInvite, listInvites, deleteInvite, getDomainStatus, Invite } from "@/lib/admin-api";
 
 export default function AdminDashboard() {
   const params = useParams();
@@ -21,9 +21,10 @@ export default function AdminDashboard() {
   const [appearanceBackground, setAppearanceBackground] = useState<string | null>(null);
   const [heroBackground, setHeroBackground] = useState<string | null>(null);
   const [domainStatus, setDomainStatus] = useState<"not_set" | "unconfigured" | "not_verified" | "verified">("not_set");
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [invites, setInvites] = useState<Invite[]>([]);
   const [inviteError, setInviteError] = useState("");
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -51,6 +52,10 @@ export default function AdminDashboard() {
 
         const domain = await getDomainStatus();
         setDomainStatus(domain.status);
+
+        // Fetch invites
+        const inviteList = await listInvites();
+        setInvites(inviteList);
       } catch (error) {
         console.error("Failed to fetch counts:", error);
       } finally {
@@ -60,6 +65,32 @@ export default function AdminDashboard() {
 
     fetchCounts();
   }, [username]);
+
+  const handleCopyToken = async (token: string, id: number) => {
+    await navigator.clipboard.writeText(token);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDeleteInvite = async (id: number) => {
+    try {
+      await deleteInvite(id);
+      setInvites(invites.filter(inv => inv.id !== id));
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Failed to delete invite");
+    }
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const isExpired = (expiresAt: string | null) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
 
   return (
     <div>
@@ -107,61 +138,112 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Invite Card */}
-        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
-          <div className="flex items-center justify-between">
+        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700 md:col-span-2 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Invite Users</p>
               <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">
-                Generate Invite
+                Invite Tokens
               </p>
             </div>
-            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-900/30 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M20 8v6m3-3h-6M8 7a4 4 0 110-8 4 4 0 010 8z" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3">
-            Invite-only signup is enabled.
-          </p>
-          <div className="mt-3 flex gap-2">
             <button
               onClick={async () => {
                 setInviteError("");
                 setCreatingInvite(true);
                 try {
                   const res = await createInvite(7);
-                  setInviteToken(res.token);
+                  setInvites([res, ...invites]);
                   await navigator.clipboard.writeText(res.token);
+                  setCopiedId(res.id);
+                  setTimeout(() => setCopiedId(null), 2000);
                 } catch (err) {
                   setInviteError(err instanceof Error ? err.message : "Failed to create invite");
                 } finally {
                   setCreatingInvite(false);
                 }
               }}
-              className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2"
               disabled={creatingInvite}
             >
-              {creatingInvite ? "Creating..." : "Create Invite"}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {creatingInvite ? "Creating..." : "New Invite"}
             </button>
-            {inviteToken && (
-              <button
-                onClick={async () => {
-                  await navigator.clipboard.writeText(inviteToken);
-                }}
-                className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200"
-              >
-                Copy
-              </button>
-            )}
           </div>
-          {inviteToken && (
-            <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 break-all">
-              {inviteToken}
-            </p>
-          )}
+
           {inviteError && (
-            <p className="mt-2 text-xs text-red-500">{inviteError}</p>
+            <p className="mb-3 text-xs text-red-500">{inviteError}</p>
+          )}
+
+          {invites.length === 0 ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 py-4 text-center">
+              No invites yet. Create one to invite users.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {invites.map((invite) => (
+                <div
+                  key={invite.id}
+                  className={`p-3 rounded-lg border ${
+                    invite.used_at
+                      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/40"
+                      : isExpired(invite.expires_at)
+                        ? "bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-700 opacity-60"
+                        : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-mono text-zinc-600 dark:text-zinc-300 truncate">
+                        {invite.token}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        {invite.used_at ? (
+                          <span className="text-green-600 dark:text-green-400">
+                            Used by {invite.used_by_username} on {formatDate(invite.used_at)}
+                          </span>
+                        ) : isExpired(invite.expires_at) ? (
+                          <span className="text-zinc-400">Expired {formatDate(invite.expires_at)}</span>
+                        ) : invite.expires_at ? (
+                          <span>Expires {formatDate(invite.expires_at)}</span>
+                        ) : (
+                          <span>No expiration</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {!invite.used_at && (
+                        <button
+                          onClick={() => handleCopyToken(invite.token, invite.id)}
+                          className="p-1.5 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 rounded"
+                          title="Copy token"
+                        >
+                          {copiedId === invite.id ? (
+                            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteInvite(invite.id)}
+                        className="p-1.5 text-zinc-400 hover:text-red-500 rounded"
+                        title="Delete invite"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
         {/* Integrations Card */}

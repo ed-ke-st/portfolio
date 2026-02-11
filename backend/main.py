@@ -379,6 +379,29 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
+@app.get("/api/admin/invites")
+async def list_invites(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all invites created by the current user."""
+    invites = db.query(Invite).filter(
+        Invite.created_by_user_id == current_user.id
+    ).order_by(Invite.created_at.desc()).all()
+
+    return [
+        {
+            "id": inv.id,
+            "token": inv.token,
+            "created_at": inv.created_at,
+            "expires_at": inv.expires_at,
+            "used_at": inv.used_at,
+            "used_by_username": inv.used_by.username if inv.used_by else None,
+        }
+        for inv in invites
+    ]
+
+
 @app.post("/api/admin/invites")
 async def create_invite(
     expires_in_days: int | None = Form(None),
@@ -402,7 +425,27 @@ async def create_invite(
     )
     db.add(invite)
     db.commit()
-    return {"token": token, "expires_at": invite.expires_at}
+    return {"id": invite.id, "token": token, "expires_at": invite.expires_at, "created_at": invite.created_at}
+
+
+@app.delete("/api/admin/invites/{invite_id}")
+async def delete_invite(
+    invite_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete/revoke an invite."""
+    invite = db.query(Invite).filter(
+        Invite.id == invite_id,
+        Invite.created_by_user_id == current_user.id
+    ).first()
+
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found")
+
+    db.delete(invite)
+    db.commit()
+    return {"message": "Invite deleted"}
 
 
 @app.post("/api/auth/login", response_model=Token)

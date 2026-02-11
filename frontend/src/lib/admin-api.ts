@@ -281,7 +281,31 @@ export async function getDomainStatus(): Promise<DomainStatus> {
   return res.json();
 }
 
-export async function createInvite(expiresInDays?: number): Promise<{ token: string; expires_at: string | null }> {
+export interface Invite {
+  id: number;
+  token: string;
+  created_at: string;
+  expires_at: string | null;
+  used_at: string | null;
+  used_by_username: string | null;
+}
+
+export async function listInvites(): Promise<Invite[]> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE_URL}/api/admin/invites`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to list invites");
+  }
+  return res.json();
+}
+
+export async function createInvite(expiresInDays?: number): Promise<Invite> {
   const token = getToken();
   const formData = new FormData();
   if (expiresInDays) {
@@ -300,4 +324,19 @@ export async function createInvite(expiresInDays?: number): Promise<{ token: str
     throw new Error(error.detail || "Failed to create invite");
   }
   return res.json();
+}
+
+export async function deleteInvite(inviteId: number): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE_URL}/api/admin/invites/${inviteId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to delete invite");
+  }
 }
