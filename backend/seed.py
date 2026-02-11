@@ -126,6 +126,20 @@ default_settings = {
         "instagram": "",
         "phone": ""
     },
+    "cv": {
+        "enabled": False,
+        "show_on_home": True,
+        "title": "Curriculum Vitae",
+        "headline": "Full-Stack Developer",
+        "summary": "I build modern web applications with a focus on clean UX and reliable systems.",
+        "location": "Remote",
+        "website": "",
+        "pdf_url": "",
+        "experience": [],
+        "education": [],
+        "certifications": [],
+        "awards": []
+    },
     "appearance": {
         "accent": "#2563eb",
         "background": "#ffffff",

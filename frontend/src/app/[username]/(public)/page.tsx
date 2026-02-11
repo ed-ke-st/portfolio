@@ -2,6 +2,7 @@ import Hero from "@/components/Hero";
 import Projects from "@/components/Projects";
 import DesignSection from "@/components/DesignSection";
 import TechStack from "@/components/TechStack";
+import CVCard from "@/components/CVCard";
 import { getProjectsForUser } from "@/lib/api";
 import { getDesignsForUser } from "@/lib/designs";
 import { getSettingsForUser, AllSettings, SkillCategory } from "@/lib/settings-api";
@@ -40,6 +41,7 @@ export default async function UserHome({
         skillCategories={settings.skill_categories as SkillCategory[] | undefined}
         appearance={resolved.active}
       />
+      <CVCard username={username} cv={settings.cv} appearance={resolved.active} />
     </>
   );
 }

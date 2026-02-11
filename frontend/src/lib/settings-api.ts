@@ -39,6 +39,59 @@ export interface ContactSettings {
   phone: string;
 }
 
+export interface CVExperience {
+  id?: string;
+  company: string;
+  role: string;
+  location?: string;
+  start: string;
+  end?: string;
+  summary?: string;
+  highlights?: string[];
+}
+
+export interface CVEducation {
+  id?: string;
+  institution: string;
+  degree: string;
+  field?: string;
+  location?: string;
+  start?: string;
+  end?: string;
+  summary?: string;
+}
+
+export interface CVCertification {
+  id?: string;
+  name: string;
+  issuer?: string;
+  year?: string;
+  url?: string;
+}
+
+export interface CVAward {
+  id?: string;
+  title: string;
+  issuer?: string;
+  year?: string;
+  description?: string;
+}
+
+export interface CVSettings {
+  enabled: boolean;
+  show_on_home?: boolean;
+  title: string;
+  headline: string;
+  summary: string;
+  location: string;
+  website: string;
+  pdf_url?: string;
+  experience: CVExperience[];
+  education: CVEducation[];
+  certifications: CVCertification[];
+  awards: CVAward[];
+}
+
 export interface FooterSettings {
   copyright: string;
 }
@@ -85,6 +138,7 @@ export interface AllSettings {
   skills?: Skill[];
   skill_categories?: string[] | SkillCategory[];
   contact?: ContactSettings;
+  cv?: CVSettings;
   footer?: FooterSettings;
   appearance?: AppearanceSettings;
   integrations?: IntegrationsSettings;

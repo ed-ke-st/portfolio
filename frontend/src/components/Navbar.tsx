@@ -16,6 +16,7 @@ export default function Navbar({ username }: NavbarProps) {
     { href: `${basePath}#designs`, label: "Design Projects" },
     { href: `${basePath}#skills`, label: "Skills" },
     { href: `${basePath}#contact`, label: "Contact" },
+    ...(username ? [{ href: `${basePath}/cv`, label: "CV" }] : []),
   ];
 
   return (

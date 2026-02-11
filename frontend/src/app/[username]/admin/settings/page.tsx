@@ -9,6 +9,11 @@ import {
   Skill,
   SkillCategory,
   ContactSettings,
+  CVSettings,
+  CVExperience,
+  CVEducation,
+  CVCertification,
+  CVAward,
   FooterSettings,
   AppearanceSettings,
   IntegrationsSettings,
@@ -26,7 +31,7 @@ import {
 import { getMe, getToken, User } from "@/lib/auth";
 import { defaultPlatformHero, PlatformHeroSettings } from "@/lib/platform-config";
 
-type TabType = "appearance" | "skills" | "contact" | "footer" | "integrations" | "domain" | "platform";
+type TabType = "appearance" | "personal" | "footer" | "integrations" | "domain" | "platform";
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -37,6 +42,7 @@ export default function SettingsPage() {
   const [integrationMessage, setIntegrationMessage] = useState("");
 
   const [uploadingHeroBg, setUploadingHeroBg] = useState(false);
+  const [uploadingCvPdf, setUploadingCvPdf] = useState(false);
 
   // Preview state
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
@@ -92,6 +98,21 @@ export default function SettingsPage() {
     phone: "",
   });
 
+  const [cv, setCv] = useState<CVSettings>({
+    enabled: false,
+    show_on_home: true,
+    title: "Curriculum Vitae",
+    headline: "",
+    summary: "",
+    location: "",
+    website: "",
+    pdf_url: "",
+    experience: [],
+    education: [],
+    certifications: [],
+    awards: [],
+  });
+
   const [footer, setFooter] = useState<FooterSettings>({
     copyright: "",
   });
@@ -135,10 +156,16 @@ export default function SettingsPage() {
   const [showCloudinaryUrl, setShowCloudinaryUrl] = useState(false);
   const [showScreenshotKey, setShowScreenshotKey] = useState(false);
 
+  const createItemId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["appearance", "skills", "contact", "footer", "integrations", "domain", "platform"].includes(tab)) {
-      setActiveTab(tab as TabType);
+    if (tab && ["appearance", "personal", "skills", "contact", "footer", "integrations", "domain", "platform"].includes(tab)) {
+      if (tab === "skills" || tab === "contact") {
+        setActiveTab("personal");
+      } else {
+        setActiveTab(tab as TabType);
+      }
     }
   }, [searchParams]);
 
@@ -207,6 +234,28 @@ export default function SettingsPage() {
           setSkillCategories(converted);
         }
         if (data.contact) setContact(data.contact);
+        if (data.cv) {
+          setCv((prev) => ({
+            ...prev,
+            ...data.cv,
+            experience: (data.cv.experience || []).map((item: CVExperience) => ({
+              id: item.id || createItemId(),
+              ...item,
+            })),
+            education: (data.cv.education || []).map((item: CVEducation) => ({
+              id: item.id || createItemId(),
+              ...item,
+            })),
+            certifications: (data.cv.certifications || []).map((item: CVCertification) => ({
+              id: item.id || createItemId(),
+              ...item,
+            })),
+            awards: (data.cv.awards || []).map((item: CVAward) => ({
+              id: item.id || createItemId(),
+              ...item,
+            })),
+          }));
+        }
         if (data.footer) setFooter(data.footer);
         if (data.appearance) {
           setAppearance({
@@ -339,10 +388,20 @@ export default function SettingsPage() {
     return value;
   };
 
+  const normalizeCv = (current: CVSettings): CVSettings => ({
+    ...current,
+    experience: current.experience.map((item) => ({
+      ...item,
+      highlights: (item.highlights || []).map((h) => h.trim()).filter(Boolean),
+    })),
+    education: current.education.map((item) => ({ ...item })),
+    certifications: current.certifications.map((item) => ({ ...item })),
+    awards: current.awards.map((item) => ({ ...item })),
+  });
+
   const tabs = [
     { id: "appearance" as TabType, label: "Appearance" },
-    { id: "skills" as TabType, label: "Skills" },
-    { id: "contact" as TabType, label: "Contact" },
+    { id: "personal" as TabType, label: "Personal" },
     { id: "footer" as TabType, label: "Footer" },
     { id: "integrations" as TabType, label: "Integrations" },
     { id: "domain" as TabType, label: "Domain" },
@@ -738,83 +797,510 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Skills Tab */}
-      {activeTab === "skills" && (
-        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
-          <div className="space-y-6">
-            <div className="pb-4 border-b border-zinc-200 dark:border-zinc-700">
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Main Categories</p>
-              <div className="flex gap-2 mb-3">
-                <input type="text" placeholder="New main category (e.g., Development, Design)" value={newMainCategory} onChange={(e) => setNewMainCategory(e.target.value)} className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
-                <button onClick={addMainCategory} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">Add</button>
+      {/* Personal Tab */}
+      {activeTab === "personal" && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Enable CV</p>
+                <p className="text-xs text-zinc-500">Show a dedicated CV page and home card.</p>
               </div>
-              <div className="space-y-3">
-                {skillCategories.map((cat, mainIndex) => (
-                  <div key={cat.name} className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-zinc-900 dark:text-white">{cat.name}</span>
-                      <button onClick={() => removeMainCategory(mainIndex)} className="text-red-500 hover:text-red-400 text-sm">Remove</button>
+              <label className="inline-flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={cv.enabled}
+                  onChange={(e) => setCv({ ...cv, enabled: e.target.checked })}
+                />
+                Enabled
+              </label>
+            </div>
+            {cv.enabled && (
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={cv.show_on_home !== false}
+                    onChange={(e) => setCv({ ...cv, show_on_home: e.target.checked })}
+                  />
+                  Show CV card on home page
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: "title", label: "CV Title", type: "text" },
+                    { key: "headline", label: "Headline", type: "text" },
+                    { key: "location", label: "Location", type: "text" },
+                    { key: "website", label: "Website URL", type: "url" },
+                  ].map(({ key, label, type }) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">{label}</label>
+                      <input
+                        type={type}
+                        value={cv[key as keyof CVSettings] as string}
+                        onChange={(e) => setCv({ ...cv, [key]: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {cat.subcategories.map((sub, subIndex) => (
-                        <span key={sub} className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-sm">
-                          {sub}
-                          <button onClick={() => removeSubCategory(mainIndex, subIndex)} className="text-red-500 hover:text-red-400">&times;</button>
-                        </span>
-                      ))}
-                      {cat.subcategories.length === 0 && <span className="text-xs text-zinc-500">No subcategories yet</span>}
-                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Summary</label>
+                  <textarea
+                    value={cv.summary}
+                    onChange={(e) => setCv({ ...cv, summary: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">PDF URL</label>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      type="url"
+                      value={cv.pdf_url || ""}
+                      onChange={(e) => setCv({ ...cv, pdf_url: e.target.value })}
+                      className="flex-1 min-w-[200px] px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                    />
+                    <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
+                      {uploadingCvPdf ? "Uploading..." : "Upload PDF"}
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingCvPdf(true);
+                          try {
+                            const result = await uploadFile(file);
+                            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                            const fileUrl = result.url.startsWith("http") ? result.url : `${apiUrl}${result.url}`;
+                            setCv({ ...cv, pdf_url: fileUrl });
+                          } catch (error) {
+                            console.error("Failed to upload PDF:", error);
+                          } finally {
+                            setUploadingCvPdf(false);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
-                ))}
+                </div>
+
+                <button
+                  onClick={() => handleSave("cv", normalizeCv(cv))}
+                  disabled={saving}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save CV Settings"}
+                </button>
               </div>
-              {skillCategories.length > 0 && (
-                <div className="flex gap-2 mt-3">
-                  <select value={selectedMainCategoryForSub} onChange={(e) => setSelectedMainCategoryForSub(e.target.value)} className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white">
-                    <option value="">Select main category</option>
+            )}
+          </div>
+
+          {cv.enabled && (
+            <>
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Experience</p>
+                  <button
+                    onClick={() =>
+                      setCv({
+                        ...cv,
+                        experience: [
+                          ...cv.experience,
+                          {
+                            id: createItemId(),
+                            company: "",
+                            role: "",
+                            location: "",
+                            start: "",
+                            end: "",
+                            summary: "",
+                            highlights: [],
+                          } as CVExperience,
+                        ],
+                      })
+                    }
+                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {cv.experience.map((item, index) => (
+                    <div key={item.id || `${item.company}-${index}`} className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          { key: "company", label: "Company" },
+                          { key: "role", label: "Role" },
+                          { key: "location", label: "Location" },
+                          { key: "start", label: "Start (e.g., 2022)" },
+                          { key: "end", label: "End (or Present)" },
+                        ].map(({ key, label }) => (
+                          <div key={key}>
+                            <label className="block text-xs text-zinc-500 mb-1">{label}</label>
+                            <input
+                              type="text"
+                              value={item[key as keyof CVExperience] as string}
+                              onChange={(e) => {
+                                const updated = [...cv.experience];
+                                updated[index] = { ...updated[index], [key]: e.target.value };
+                                setCv({ ...cv, experience: updated });
+                              }}
+                              className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Summary</label>
+                        <textarea
+                          value={item.summary || ""}
+                          onChange={(e) => {
+                            const updated = [...cv.experience];
+                            updated[index] = { ...updated[index], summary: e.target.value };
+                            setCv({ ...cv, experience: updated });
+                          }}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Highlights (one per line)</label>
+                        <textarea
+                          value={(item.highlights || []).join("\n")}
+                          onChange={(e) => {
+                            const updated = [...cv.experience];
+                            updated[index] = {
+                              ...updated[index],
+                              highlights: e.target.value.split("\n").map((v) => v.replace(/\s+$/, "")),
+                            };
+                            setCv({ ...cv, experience: updated });
+                          }}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setCv({ ...cv, experience: cv.experience.filter((_, i) => i !== index) })}
+                        className="text-xs text-red-500 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Education</p>
+                  <button
+                    onClick={() =>
+                      setCv({
+                        ...cv,
+                        education: [
+                          ...cv.education,
+                          {
+                            id: createItemId(),
+                            institution: "",
+                            degree: "",
+                            field: "",
+                            location: "",
+                            start: "",
+                            end: "",
+                            summary: "",
+                          } as CVEducation,
+                        ],
+                      })
+                    }
+                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {cv.education.map((item, index) => (
+                    <div key={item.id || `${item.institution}-${index}`} className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          { key: "institution", label: "Institution" },
+                          { key: "degree", label: "Degree" },
+                          { key: "field", label: "Field" },
+                          { key: "location", label: "Location" },
+                          { key: "start", label: "Start" },
+                          { key: "end", label: "End" },
+                        ].map(({ key, label }) => (
+                          <div key={key}>
+                            <label className="block text-xs text-zinc-500 mb-1">{label}</label>
+                            <input
+                              type="text"
+                              value={item[key as keyof CVEducation] as string}
+                              onChange={(e) => {
+                                const updated = [...cv.education];
+                                updated[index] = { ...updated[index], [key]: e.target.value };
+                                setCv({ ...cv, education: updated });
+                              }}
+                              className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Summary</label>
+                        <textarea
+                          value={item.summary || ""}
+                          onChange={(e) => {
+                            const updated = [...cv.education];
+                            updated[index] = { ...updated[index], summary: e.target.value };
+                            setCv({ ...cv, education: updated });
+                          }}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setCv({ ...cv, education: cv.education.filter((_, i) => i !== index) })}
+                        className="text-xs text-red-500 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Certifications</p>
+                  <button
+                    onClick={() =>
+                      setCv({
+                        ...cv,
+                        certifications: [
+                          ...cv.certifications,
+                          { id: createItemId(), name: "", issuer: "", year: "", url: "" } as CVCertification,
+                        ],
+                      })
+                    }
+                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {cv.certifications.map((item, index) => (
+                    <div key={item.id || `${item.name}-${index}`} className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          { key: "name", label: "Name" },
+                          { key: "issuer", label: "Issuer" },
+                          { key: "year", label: "Year" },
+                          { key: "url", label: "Credential URL" },
+                        ].map(({ key, label }) => (
+                          <div key={key}>
+                            <label className="block text-xs text-zinc-500 mb-1">{label}</label>
+                            <input
+                              type="text"
+                              value={item[key as keyof CVCertification] as string}
+                              onChange={(e) => {
+                                const updated = [...cv.certifications];
+                                updated[index] = { ...updated[index], [key]: e.target.value };
+                                setCv({ ...cv, certifications: updated });
+                              }}
+                              className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setCv({ ...cv, certifications: cv.certifications.filter((_, i) => i !== index) })}
+                        className="text-xs text-red-500 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Awards</p>
+                  <button
+                    onClick={() =>
+                      setCv({
+                        ...cv,
+                        awards: [
+                          ...cv.awards,
+                          { id: createItemId(), title: "", issuer: "", year: "", description: "" } as CVAward,
+                        ],
+                      })
+                    }
+                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {cv.awards.map((item, index) => (
+                    <div key={item.id || `${item.title}-${index}`} className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          { key: "title", label: "Title" },
+                          { key: "issuer", label: "Issuer" },
+                          { key: "year", label: "Year" },
+                        ].map(({ key, label }) => (
+                          <div key={key}>
+                            <label className="block text-xs text-zinc-500 mb-1">{label}</label>
+                            <input
+                              type="text"
+                              value={item[key as keyof CVAward] as string}
+                              onChange={(e) => {
+                                const updated = [...cv.awards];
+                                updated[index] = { ...updated[index], [key]: e.target.value };
+                                setCv({ ...cv, awards: updated });
+                              }}
+                              className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Description</label>
+                        <textarea
+                          value={item.description || ""}
+                          onChange={(e) => {
+                            const updated = [...cv.awards];
+                            updated[index] = { ...updated[index], description: e.target.value };
+                            setCv({ ...cv, awards: updated });
+                          }}
+                          rows={2}
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setCv({ ...cv, awards: cv.awards.filter((_, i) => i !== index) })}
+                        className="text-xs text-red-500 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+                <button
+                  onClick={() => handleSave("cv", normalizeCv(cv))}
+                  disabled={saving}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save CV Sections"}
+                </button>
+              </div>
+            </>
+          )}
+
+          <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+            <div className="space-y-6">
+              <div className="pb-4 border-b border-zinc-200 dark:border-zinc-700">
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Main Categories</p>
+                <div className="flex gap-2 mb-3">
+                  <input type="text" placeholder="New main category (e.g., Development, Design)" value={newMainCategory} onChange={(e) => setNewMainCategory(e.target.value)} className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                  <button onClick={addMainCategory} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">Add</button>
+                </div>
+                <div className="space-y-3">
+                  {skillCategories.map((cat, mainIndex) => (
+                    <div key={cat.name} className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-zinc-900 dark:text-white">{cat.name}</span>
+                        <button onClick={() => removeMainCategory(mainIndex)} className="text-red-500 hover:text-red-400 text-sm">Remove</button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {cat.subcategories.map((sub, subIndex) => (
+                          <span key={sub} className="inline-flex items-center gap-1 px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-sm">
+                            {sub}
+                            <button onClick={() => removeSubCategory(mainIndex, subIndex)} className="text-red-500 hover:text-red-400">&times;</button>
+                          </span>
+                        ))}
+                        {cat.subcategories.length === 0 && <span className="text-xs text-zinc-500">No subcategories yet</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {skillCategories.length > 0 && (
+                  <div className="flex gap-2 mt-3">
+                    <select value={selectedMainCategoryForSub} onChange={(e) => setSelectedMainCategoryForSub(e.target.value)} className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white">
+                      <option value="">Select main category</option>
+                      {skillCategories.map((cat) => (<option key={cat.name} value={cat.name}>{cat.name}</option>))}
+                    </select>
+                    <input type="text" placeholder="New subcategory" value={newSubCategory} onChange={(e) => setNewSubCategory(e.target.value)} className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                    <button onClick={addSubCategory} disabled={!selectedMainCategoryForSub} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">Add Sub</button>
+                  </div>
+                )}
+                <button onClick={() => handleSave("skill_categories", skillCategories)} disabled={saving} className="mt-3 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">{saving ? "Saving..." : "Save Categories"}</button>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Add Skill</p>
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" placeholder="Skill name" value={newSkill.name} onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })} className="flex-1 min-w-[150px] px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                  <select value={newSkill.mainCategory} onChange={(e) => setNewSkill({ ...newSkill, mainCategory: e.target.value, category: "" })} className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white">
+                    <option value="">Main Category</option>
                     {skillCategories.map((cat) => (<option key={cat.name} value={cat.name}>{cat.name}</option>))}
                   </select>
-                  <input type="text" placeholder="New subcategory" value={newSubCategory} onChange={(e) => setNewSubCategory(e.target.value)} className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
-                  <button onClick={addSubCategory} disabled={!selectedMainCategoryForSub} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">Add Sub</button>
+                  <select value={newSkill.category} onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value })} disabled={!newSkill.mainCategory} className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white disabled:opacity-50">
+                    <option value="">Subcategory</option>
+                    {getSubcategories(newSkill.mainCategory).map((sub) => (<option key={sub} value={sub}>{sub}</option>))}
+                  </select>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min={0} max={100} step={1} value={newSkill.level} onChange={(e) => setNewSkill({ ...newSkill, level: Number(e.target.value) })} className="w-24" />
+                    <span className="text-xs text-zinc-500 w-8">{newSkill.level}%</span>
+                  </div>
+                  <button onClick={addSkill} disabled={!newSkill.name || !newSkill.category || !newSkill.mainCategory} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">Add</button>
                 </div>
-              )}
-              <button onClick={() => handleSave("skill_categories", skillCategories)} disabled={saving} className="mt-3 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">{saving ? "Saving..." : "Save Categories"}</button>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Add Skill</p>
-              <div className="flex flex-wrap gap-2">
-                <input type="text" placeholder="Skill name" value={newSkill.name} onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })} className="flex-1 min-w-[150px] px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
-                <select value={newSkill.mainCategory} onChange={(e) => setNewSkill({ ...newSkill, mainCategory: e.target.value, category: "" })} className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white">
-                  <option value="">Main Category</option>
-                  {skillCategories.map((cat) => (<option key={cat.name} value={cat.name}>{cat.name}</option>))}
-                </select>
-                <select value={newSkill.category} onChange={(e) => setNewSkill({ ...newSkill, category: e.target.value })} disabled={!newSkill.mainCategory} className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white disabled:opacity-50">
-                  <option value="">Subcategory</option>
-                  {getSubcategories(newSkill.mainCategory).map((sub) => (<option key={sub} value={sub}>{sub}</option>))}
-                </select>
-                <div className="flex items-center gap-2">
-                  <input type="range" min={0} max={100} step={1} value={newSkill.level} onChange={(e) => setNewSkill({ ...newSkill, level: Number(e.target.value) })} className="w-24" />
-                  <span className="text-xs text-zinc-500 w-8">{newSkill.level}%</span>
-                </div>
-                <button onClick={addSkill} disabled={!newSkill.name || !newSkill.category || !newSkill.mainCategory} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">Add</button>
               </div>
-            </div>
 
-            <div>
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Skills ({skills.length})</p>
-              {skillCategories.map((mainCat) => {
-                const mainSkills = skills.filter((s) => s.mainCategory === mainCat.name);
-                if (mainSkills.length === 0) return null;
-                return (
-                  <div key={mainCat.name} className="mb-4">
-                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">{mainCat.name}</p>
+              <div>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Skills ({skills.length})</p>
+                {skillCategories.map((mainCat) => {
+                  const mainSkills = skills.filter((s) => s.mainCategory === mainCat.name);
+                  if (mainSkills.length === 0) return null;
+                  return (
+                    <div key={mainCat.name} className="mb-4">
+                      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">{mainCat.name}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {mainSkills.map((skill, index) => {
+                          const globalIndex = skills.findIndex((s) => s === skill);
+                          return (
+                            <div key={index} className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
+                              <span className="text-zinc-900 dark:text-white">{skill.name}</span>
+                              <span className="text-xs text-zinc-500">({skill.category})</span>
+                              <input type="range" min={0} max={100} step={1} value={typeof skill.level === "number" ? skill.level : 75} onChange={(e) => { const level = Number(e.target.value); setSkills((prev) => prev.map((s, i) => (i === globalIndex ? { ...s, level } : s))); }} className="w-20" />
+                              <span className="text-xs text-zinc-500 w-8">{typeof skill.level === "number" ? skill.level : 75}%</span>
+                              <button onClick={() => removeSkill(globalIndex)} className="text-red-500 hover:text-red-400">&times;</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+                {skills.filter((s) => !s.mainCategory).length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Uncategorized</p>
                     <div className="flex flex-wrap gap-2">
-                      {mainSkills.map((skill, index) => {
+                      {skills.filter((s) => !s.mainCategory).map((skill, index) => {
                         const globalIndex = skills.findIndex((s) => s === skill);
                         return (
                           <div key={index} className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
                             <span className="text-zinc-900 dark:text-white">{skill.name}</span>
-                            <span className="text-xs text-zinc-500">({skill.category})</span>
+                            <span className="text-xs text-zinc-500">({skill.category || "none"})</span>
                             <input type="range" min={0} max={100} step={1} value={typeof skill.level === "number" ? skill.level : 75} onChange={(e) => { const level = Number(e.target.value); setSkills((prev) => prev.map((s, i) => (i === globalIndex ? { ...s, level } : s))); }} className="w-20" />
                             <span className="text-xs text-zinc-500 w-8">{typeof skill.level === "number" ? skill.level : 75}%</span>
                             <button onClick={() => removeSkill(globalIndex)} className="text-red-500 hover:text-red-400">&times;</button>
@@ -823,69 +1309,47 @@ export default function SettingsPage() {
                       })}
                     </div>
                   </div>
-                );
-              })}
-              {skills.filter((s) => !s.mainCategory).length > 0 && (
-                <div className="mb-4">
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Uncategorized</p>
-                  <div className="flex flex-wrap gap-2">
-                    {skills.filter((s) => !s.mainCategory).map((skill, index) => {
-                      const globalIndex = skills.findIndex((s) => s === skill);
-                      return (
-                        <div key={index} className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
-                          <span className="text-zinc-900 dark:text-white">{skill.name}</span>
-                          <span className="text-xs text-zinc-500">({skill.category || "none"})</span>
-                          <input type="range" min={0} max={100} step={1} value={typeof skill.level === "number" ? skill.level : 75} onChange={(e) => { const level = Number(e.target.value); setSkills((prev) => prev.map((s, i) => (i === globalIndex ? { ...s, level } : s))); }} className="w-20" />
-                          <span className="text-xs text-zinc-500 w-8">{typeof skill.level === "number" ? skill.level : 75}%</span>
-                          <button onClick={() => removeSkill(globalIndex)} className="text-red-500 hover:text-red-400">&times;</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button onClick={() => handleSave("skills", skills)} disabled={saving} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">{saving ? "Saving..." : "Save Skills"}</button>
-          </div>
-        </div>
-      )}
-
-      {/* Contact Tab */}
-      {activeTab === "contact" && (
-        <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
-          <div className="space-y-4">
-            {[
-              { key: "heading", label: "Heading", type: "text" },
-              { key: "subheading", label: "Subheading", type: "text" },
-              { key: "email", label: "Email", type: "email" },
-              { key: "github", label: "GitHub URL", type: "url" },
-              { key: "linkedin", label: "LinkedIn URL", type: "url" },
-              { key: "twitter", label: "Twitter/X URL (optional)", type: "url" },
-              { key: "instagram", label: "Instagram URL (optional)", type: "url" },
-              { key: "phone", label: "Phone (optional)", type: "tel" },
-            ].map(({ key, label, type }) => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">{label}</label>
-                <input
-                  type={type}
-                  value={contact[key as keyof ContactSettings]}
-                  onChange={(e) => setContact({ ...contact, [key]: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
-                />
+                )}
               </div>
-            ))}
-            <button
-              onClick={async () => {
-                const sanitizedPhone = sanitizePhone(contact.phone);
-                await handleSave("contact", { ...contact, phone: sanitizedPhone });
-                setContact((prev) => ({ ...prev, phone: formatPhone(sanitizedPhone) }));
-              }}
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Contact Settings"}
-            </button>
+
+              <button onClick={() => handleSave("skills", skills)} disabled={saving} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50">{saving ? "Saving..." : "Save Skills"}</button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+            <div className="space-y-4">
+              {[
+                { key: "heading", label: "Heading", type: "text" },
+                { key: "subheading", label: "Subheading", type: "text" },
+                { key: "email", label: "Email", type: "email" },
+                { key: "github", label: "GitHub URL", type: "url" },
+                { key: "linkedin", label: "LinkedIn URL", type: "url" },
+                { key: "twitter", label: "Twitter/X URL (optional)", type: "url" },
+                { key: "instagram", label: "Instagram URL (optional)", type: "url" },
+                { key: "phone", label: "Phone (optional)", type: "tel" },
+              ].map(({ key, label, type }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">{label}</label>
+                  <input
+                    type={type}
+                    value={contact[key as keyof ContactSettings]}
+                    onChange={(e) => setContact({ ...contact, [key]: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                </div>
+              ))}
+              <button
+                onClick={async () => {
+                  const sanitizedPhone = sanitizePhone(contact.phone);
+                  await handleSave("contact", { ...contact, phone: sanitizedPhone });
+                  setContact((prev) => ({ ...prev, phone: formatPhone(sanitizedPhone) }));
+                }}
+                disabled={saving}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Contact Settings"}
+              </button>
+            </div>
           </div>
         </div>
       )}

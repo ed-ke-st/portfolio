@@ -124,6 +124,7 @@ class AllSettingsResponse(BaseModel):
     skills: list[dict] | None = None
     skill_categories: list[dict] | list[str] | None = None
     contact: dict | None = None
+    cv: dict | None = None
     footer: dict | None = None
     appearance: dict | None = None
     integrations: dict | None = None
