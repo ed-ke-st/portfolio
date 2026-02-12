@@ -1,10 +1,5 @@
-import { redirect } from "next/navigation";
+import { SettingsPageClient } from "../settings/page";
 
-export default async function AdminPersonalPage({
-  params,
-}: {
-  params: Promise<{ username: string }>;
-}) {
-  const { username } = await params;
-  redirect(`/${username}/admin/settings?tab=personal`);
+export default function AdminPersonalPage() {
+  return <SettingsPageClient forcedTab="personal" hideTabs pageTitle="Personal Settings" />;
 }

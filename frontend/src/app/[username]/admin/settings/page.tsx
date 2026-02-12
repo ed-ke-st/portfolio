@@ -36,9 +36,19 @@ import MediaLibraryModal from "@/components/MediaLibraryModal";
 
 type TabType = "appearance" | "personal" | "footer" | "integrations" | "domain" | "platform";
 
-export default function SettingsPage() {
+interface SettingsPageClientProps {
+  forcedTab?: TabType;
+  hideTabs?: boolean;
+  pageTitle?: string;
+}
+
+export function SettingsPageClient({
+  forcedTab,
+  hideTabs = false,
+  pageTitle = "Site Settings",
+}: SettingsPageClientProps = {}) {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>("appearance");
+  const [activeTab, setActiveTab] = useState<TabType>(forcedTab || "appearance");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -175,6 +185,10 @@ export default function SettingsPage() {
   const createItemId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   useEffect(() => {
+    if (forcedTab) {
+      setActiveTab(forcedTab);
+      return;
+    }
     const tab = searchParams.get("tab");
     if (tab && ["appearance", "personal", "skills", "contact", "footer", "integrations", "domain", "platform"].includes(tab)) {
       if (tab === "skills" || tab === "contact") {
@@ -183,7 +197,7 @@ export default function SettingsPage() {
         setActiveTab(tab as TabType);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, forcedTab]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -485,7 +499,7 @@ export default function SettingsPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Site Settings
+          {pageTitle}
         </h1>
         {message && (
           <span className={`text-sm ${message.includes("Failed") || message.includes("failed") ? "text-red-500" : "text-green-500"}`}>
@@ -495,21 +509,23 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === tab.id
-                ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {!hideTabs && (
+        <div className="flex gap-2 mb-6 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+                activeTab === tab.id
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Appearance Tab */}
       {activeTab === "appearance" && (
@@ -846,7 +862,8 @@ export default function SettingsPage() {
 
       {/* Personal Tab */}
       {activeTab === "personal" && (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6">
+          <div className="space-y-6">
           <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
             <div className="flex items-center justify-between">
               <div>
@@ -996,32 +1013,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Full CV Page Preview</p>
-                      {currentUser?.username && (
-                        <a
-                          href={`/${currentUser.username}/cv`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-500"
-                        >
-                          Open in new tab
-                        </a>
-                      )}
-                    </div>
-                    {cv.enabled && currentUser?.username ? (
-                      <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800">
-                        <iframe
-                          src={`/${currentUser.username}/cv`}
-                          title="CV page preview"
-                          className="w-full h-[720px] bg-white"
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-xs text-zinc-500">Enable CV to preview the full page.</p>
-                    )}
-                  </div>
                 </div>
 
                 <div>
@@ -1569,6 +1560,39 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+
+          </div>
+
+          <div className="hidden lg:block">
+            <div className="sticky top-4 space-y-4">
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">CV Page Preview</p>
+                  {currentUser?.username && (
+                    <a
+                      href={`/${currentUser.username}/cv`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-500"
+                    >
+                      Open in new tab
+                    </a>
+                  )}
+                </div>
+                {cv.enabled && currentUser?.username ? (
+                  <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800">
+                    <iframe
+                      src={`/${currentUser.username}/cv`}
+                      title="CV page preview"
+                      className="w-full h-[760px] bg-white"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-500">Enable CV to preview the full page.</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2057,4 +2081,8 @@ export default function SettingsPage() {
       />
     </div>
   );
+}
+
+export default function SettingsPage() {
+  return <SettingsPageClient />;
 }
