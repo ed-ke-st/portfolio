@@ -677,7 +677,9 @@ async def get_user_cv_pdf(username: str, db: Session = Depends(get_db)):
         lines = wrap_lines(clean, fontsize, width)
         line_height = fontsize * 1.35
         ensure_space((len(lines) * line_height) + after)
-        font = "helvB" if bold else "helv"
+        # "helvB" is not available in all PyMuPDF environments without an explicit font file.
+        # Use built-in Helvetica consistently for portability.
+        font = "helv"
         x = margin + indent
         for line in lines:
             page.insert_text((x, y + fontsize), line, fontsize=fontsize, fontname=font, color=color)
