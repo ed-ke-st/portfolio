@@ -38,6 +38,17 @@ export default async function CVPage({
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const generatedPdfUrl = `${apiBaseUrl}/api/u/${username}/cv/pdf`;
   const downloadPdfUrl = cv?.pdf_url || generatedPdfUrl;
+  const isHexColor = (value?: string) => Boolean(value && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value));
+  const cvPalette = cv?.use_custom_appearance
+    ? {
+        accent: isHexColor(cv.appearance?.accent) ? cv.appearance!.accent! : resolved.active.accent,
+        background: isHexColor(cv.appearance?.background) ? cv.appearance!.background! : resolved.active.background,
+        text: isHexColor(cv.appearance?.text) ? cv.appearance!.text! : resolved.active.text,
+        muted: isHexColor(cv.appearance?.muted) ? cv.appearance!.muted! : resolved.active.muted,
+        card: isHexColor(cv.appearance?.card) ? cv.appearance!.card! : resolved.active.card,
+        border: isHexColor(cv.appearance?.border) ? cv.appearance!.border! : resolved.active.border,
+      }
+    : resolved.active;
 
   if (!cv?.enabled) {
     return (
@@ -68,25 +79,28 @@ export default async function CVPage({
     || Object.keys(groupedSkills);
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] text-[var(--app-text)]">
+    <div
+      className="min-h-screen"
+      style={{ background: cvPalette.background, color: cvPalette.text }}
+    >
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div
           className="rounded-2xl border p-6 sm:p-8"
-          style={{ background: resolved.active.card, borderColor: resolved.active.border }}
+          style={{ background: cvPalette.card, borderColor: cvPalette.border }}
         >
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="space-y-2 flex-1">
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--app-muted)]">
                 {cv.title || "Curriculum Vitae"}
               </p>
-              <h1 className="text-3xl sm:text-4xl font-semibold">
+              <h1 className="text-3xl sm:text-4xl font-semibold whitespace-pre-wrap">
                 {heroName}
               </h1>
               {cv.headline && (
-                <p className="text-lg text-[var(--app-muted)]">{cv.headline}</p>
+                <p className="text-lg" style={{ color: cvPalette.muted }}>{cv.headline}</p>
               )}
               {cv.location && (
-                <p className="text-sm text-[var(--app-muted)]">{cv.location}</p>
+                <p className="text-sm" style={{ color: cvPalette.muted }}>{cv.location}</p>
               )}
             </div>
             {cv.photo_url && (
@@ -95,38 +109,38 @@ export default async function CVPage({
                   src={cv.photo_url}
                   alt={`${heroName} photo`}
                   className="w-24 h-24 rounded-xl object-cover border"
-                  style={{ borderColor: resolved.active.border }}
+                  style={{ borderColor: cvPalette.border }}
                 />
               </div>
             )}
             <div className="flex flex-col gap-2 text-sm">
               {contact?.email && (
-                <a className="text-[var(--app-text)]" href={`mailto:${contact.email}`}>
+                <a href={`mailto:${contact.email}`}>
                   {contact.email}
                 </a>
               )}
               {contact?.phone && (
-                <a className="text-[var(--app-text)]" href={`tel:${contact.phone.replace(/\\D/g, "")}`}>
+                <a href={`tel:${contact.phone.replace(/\\D/g, "")}`}>
                   {contact.phone}
                 </a>
               )}
               {contact?.linkedin && (
-                <a className="text-[var(--app-text)]" href={contact.linkedin}>
+                <a href={contact.linkedin}>
                   LinkedIn
                 </a>
               )}
               {contact?.github && (
-                <a className="text-[var(--app-text)]" href={contact.github}>
+                <a href={contact.github}>
                   GitHub
                 </a>
               )}
               {cv.website && (
-                <a className="text-[var(--app-text)]" href={cv.website}>
+                <a href={cv.website}>
                   {cv.website}
                 </a>
               )}
               <a
-                className="inline-flex items-center gap-2 text-[var(--app-text)] underline"
+                className="inline-flex items-center gap-2 underline"
                 href={downloadPdfUrl}
                 download
               >
@@ -136,7 +150,7 @@ export default async function CVPage({
           </div>
 
           {cv.summary && (
-            <p className="mt-6 text-[var(--app-muted)]">{cv.summary}</p>
+            <p className="mt-6" style={{ color: cvPalette.muted }}>{cv.summary}</p>
           )}
         </div>
 
@@ -146,20 +160,20 @@ export default async function CVPage({
               <h2 className="text-xl font-semibold mb-4">Experience</h2>
               <div className="space-y-6">
                 {cv.experience.map((item, index) => (
-                  <div key={item.id || `${item.company}-${item.role}-${index}`} className="border-l-2 pl-4" style={{ borderColor: resolved.active.border }}>
+                  <div key={item.id || `${item.company}-${item.role}-${index}`} className="border-l-2 pl-4" style={{ borderColor: cvPalette.border }}>
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       <h3 className="text-lg font-semibold">{item.role}</h3>
-                      <span className="text-sm text-[var(--app-muted)]">{item.company}</span>
+                      <span className="text-sm" style={{ color: cvPalette.muted }}>{item.company}</span>
                       {item.location && (
-                        <span className="text-sm text-[var(--app-muted)]">{item.location}</span>
+                        <span className="text-sm" style={{ color: cvPalette.muted }}>{item.location}</span>
                       )}
                     </div>
-                    <p className="text-sm text-[var(--app-muted)]">{formatRange(item.start, item.end)}</p>
+                    <p className="text-sm" style={{ color: cvPalette.muted }}>{formatRange(item.start, item.end)}</p>
                     {item.summary && (
-                      <p className="mt-2 text-sm text-[var(--app-text)]">{item.summary}</p>
+                      <p className="mt-2 text-sm">{item.summary}</p>
                     )}
                     {item.highlights && item.highlights.filter((h) => h.trim()).length > 0 && (
-                      <ul className="mt-2 list-disc list-inside text-sm text-[var(--app-muted)]">
+                      <ul className="mt-2 list-disc list-inside text-sm" style={{ color: cvPalette.muted }}>
                         {item.highlights.filter((h) => h.trim()).map((h, i) => (
                           <li key={`${h}-${i}`}>{h}</li>
                         ))}
@@ -176,17 +190,17 @@ export default async function CVPage({
               <h2 className="text-xl font-semibold mb-4">Education</h2>
               <div className="space-y-6">
                 {cv.education.map((item, index) => (
-                  <div key={item.id || `${item.institution}-${item.degree}-${index}`} className="border-l-2 pl-4" style={{ borderColor: resolved.active.border }}>
+                  <div key={item.id || `${item.institution}-${item.degree}-${index}`} className="border-l-2 pl-4" style={{ borderColor: cvPalette.border }}>
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                       <h3 className="text-lg font-semibold">{item.degree}</h3>
-                      <span className="text-sm text-[var(--app-muted)]">{item.institution}</span>
+                      <span className="text-sm" style={{ color: cvPalette.muted }}>{item.institution}</span>
                       {item.field && (
-                        <span className="text-sm text-[var(--app-muted)]">{item.field}</span>
+                        <span className="text-sm" style={{ color: cvPalette.muted }}>{item.field}</span>
                       )}
                     </div>
-                    <p className="text-sm text-[var(--app-muted)]">{formatRange(item.start, item.end)}</p>
+                    <p className="text-sm" style={{ color: cvPalette.muted }}>{formatRange(item.start, item.end)}</p>
                     {item.summary && (
-                      <p className="mt-2 text-sm text-[var(--app-text)]">{item.summary}</p>
+                      <p className="mt-2 text-sm">{item.summary}</p>
                     )}
                   </div>
                 ))}
@@ -199,11 +213,11 @@ export default async function CVPage({
               <h2 className="text-xl font-semibold mb-4">Skills</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {orderedSkillGroups.map((group) => (
-                  <div key={group} className="rounded-xl border p-4" style={{ borderColor: resolved.active.border }}>
+                  <div key={group} className="rounded-xl border p-4" style={{ borderColor: cvPalette.border }}>
                     <p className="text-sm font-semibold mb-2">{group}</p>
-                    <div className="flex flex-wrap gap-2 text-sm text-[var(--app-muted)]">
+                    <div className="flex flex-wrap gap-2 text-sm" style={{ color: cvPalette.muted }}>
                       {groupedSkills[group].map((skill) => (
-                        <span key={`${group}-${skill.name}`} className="px-2 py-1 rounded-full border" style={{ borderColor: resolved.active.border }}>
+                        <span key={`${group}-${skill.name}`} className="px-2 py-1 rounded-full border" style={{ borderColor: cvPalette.border }}>
                           {skill.name}
                         </span>
                       ))}
@@ -219,14 +233,14 @@ export default async function CVPage({
               <h2 className="text-xl font-semibold mb-4">Certifications</h2>
               <div className="grid gap-3">
                 {cv.certifications.map((item, index) => (
-                  <div key={item.id || `${item.name}-${index}`} className="rounded-lg border p-4" style={{ borderColor: resolved.active.border }}>
+                  <div key={item.id || `${item.name}-${index}`} className="rounded-lg border p-4" style={{ borderColor: cvPalette.border }}>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{item.name}</p>
-                      {item.issuer && <span className="text-sm text-[var(--app-muted)]">{item.issuer}</span>}
-                      {item.year && <span className="text-sm text-[var(--app-muted)]">{item.year}</span>}
+                      {item.issuer && <span className="text-sm" style={{ color: cvPalette.muted }}>{item.issuer}</span>}
+                      {item.year && <span className="text-sm" style={{ color: cvPalette.muted }}>{item.year}</span>}
                     </div>
                     {item.url && (
-                      <a className="text-sm underline text-[var(--app-text)]" href={item.url}>
+                      <a className="text-sm underline" href={item.url}>
                         View credential
                       </a>
                     )}
@@ -241,14 +255,14 @@ export default async function CVPage({
               <h2 className="text-xl font-semibold mb-4">Awards</h2>
               <div className="grid gap-3">
                 {cv.awards.map((item, index) => (
-                  <div key={item.id || `${item.title}-${index}`} className="rounded-lg border p-4" style={{ borderColor: resolved.active.border }}>
+                  <div key={item.id || `${item.title}-${index}`} className="rounded-lg border p-4" style={{ borderColor: cvPalette.border }}>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{item.title}</p>
-                      {item.issuer && <span className="text-sm text-[var(--app-muted)]">{item.issuer}</span>}
-                      {item.year && <span className="text-sm text-[var(--app-muted)]">{item.year}</span>}
+                      {item.issuer && <span className="text-sm" style={{ color: cvPalette.muted }}>{item.issuer}</span>}
+                      {item.year && <span className="text-sm" style={{ color: cvPalette.muted }}>{item.year}</span>}
                     </div>
                     {item.description && (
-                      <p className="text-sm text-[var(--app-muted)] mt-1">{item.description}</p>
+                      <p className="text-sm mt-1" style={{ color: cvPalette.muted }}>{item.description}</p>
                     )}
                   </div>
                 ))}
@@ -261,9 +275,9 @@ export default async function CVPage({
               <h2 className="text-xl font-semibold mb-4">Selected Projects</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {projects.filter((p) => p.featured).slice(0, 4).map((project) => (
-                  <div key={project.id} className="rounded-xl border p-4" style={{ borderColor: resolved.active.border }}>
+                  <div key={project.id} className="rounded-xl border p-4" style={{ borderColor: cvPalette.border }}>
                     <p className="font-medium">{project.title}</p>
-                    <p className="text-sm text-[var(--app-muted)] mt-1">{project.description}</p>
+                    <p className="text-sm mt-1" style={{ color: cvPalette.muted }}>{project.description}</p>
                     <div className="flex gap-3 mt-3 text-sm">
                       {project.live_url && (
                         <a className="underline" href={project.live_url}>Live</a>

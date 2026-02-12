@@ -87,6 +87,15 @@ export interface CVSettings {
   website: string;
   photo_url?: string;
   pdf_url?: string;
+  use_custom_appearance?: boolean;
+  appearance?: {
+    accent?: string;
+    background?: string;
+    text?: string;
+    muted?: string;
+    card?: string;
+    border?: string;
+  };
   experience: CVExperience[];
   education: CVEducation[];
   certifications: CVCertification[];

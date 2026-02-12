@@ -108,6 +108,15 @@ export default function SettingsPage() {
     website: "",
     photo_url: "",
     pdf_url: "",
+    use_custom_appearance: false,
+    appearance: {
+      accent: "",
+      background: "",
+      text: "",
+      muted: "",
+      card: "",
+      border: "",
+    },
     experience: [],
     education: [],
     certifications: [],
@@ -394,7 +403,7 @@ export default function SettingsPage() {
     ...current,
     experience: current.experience.map((item) => ({
       ...item,
-      highlights: (item.highlights || []).map((h) => h.trim()).filter(Boolean),
+      highlights: (item.highlights || []).filter((h) => h.trim().length > 0),
     })),
     education: current.education.map((item) => ({ ...item })),
     certifications: current.certifications.map((item) => ({ ...item })),
@@ -412,15 +421,15 @@ export default function SettingsPage() {
       : []),
   ];
 
-  const isHexColor = (value: string) => /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
+  const isHexColor = (value: string | undefined) => Boolean(value && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value));
   const normalizeHex = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return "";
     if (trimmed.startsWith("#")) return trimmed;
     return `#${trimmed}`;
   };
-  const resolveColor = (value: string, fallback: string) =>
-    isHexColor(value) ? value : fallback;
+  const resolveColor = (value: string | undefined, fallback: string): string =>
+    isHexColor(value) && value ? value : fallback;
   const previewPalette = appearance.dark_mode && appearance.dark
     ? {
         accent: resolveColor(appearance.dark.accent, "#60a5fa"),
@@ -438,6 +447,16 @@ export default function SettingsPage() {
         card: resolveColor(appearance.card, "#f4f4f5"),
         border: resolveColor(appearance.border, "#e4e4e7"),
       };
+  const cvPreviewPalette = cv.use_custom_appearance
+    ? {
+        accent: resolveColor(cv.appearance?.accent, previewPalette.accent),
+        background: resolveColor(cv.appearance?.background, previewPalette.background),
+        text: resolveColor(cv.appearance?.text, previewPalette.text),
+        muted: resolveColor(cv.appearance?.muted, previewPalette.muted),
+        card: resolveColor(cv.appearance?.card, previewPalette.card),
+        border: resolveColor(cv.appearance?.border, previewPalette.border),
+      }
+    : previewPalette;
 
   if (loading) {
     return <p className="text-zinc-500">Loading settings...</p>;
@@ -510,7 +529,7 @@ export default function SettingsPage() {
                   <div className="relative z-10 text-center">
                     <h1 className="text-xl font-bold mb-2" style={{ color: hero.use_custom_colors && hero.text_color ? hero.text_color : (hero.background_image ? "#ffffff" : previewPalette.text) }}>
                       {hero.title || "Hello, I'm"}{" "}
-                      <span style={{ color: hero.use_custom_colors && hero.highlight_color ? hero.highlight_color : previewPalette.accent }}>{hero.highlight || "Your Name"}</span>
+                      <span className="whitespace-pre-wrap" style={{ color: hero.use_custom_colors && hero.highlight_color ? hero.highlight_color : previewPalette.accent }}>{hero.highlight || "Your Name"}</span>
                     </h1>
                     <p className="text-xs mb-3" style={{ color: hero.use_custom_colors && hero.subtitle_color ? hero.subtitle_color : (hero.background_image ? "rgba(255,255,255,0.8)" : previewPalette.muted) }}>
                       {hero.subtitle || "A passionate developer"}
@@ -649,25 +668,25 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs text-zinc-500 mb-1">Title</label>
-                      <input type="text" value={hero.title} onChange={(e) => setHero({ ...hero, title: e.target.value })} placeholder="Hello, I'm" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                      <input type="text" value={hero.title} onChange={(e) => setHero((prev) => ({ ...prev, title: e.target.value }))} placeholder="Hello, I'm" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
                     </div>
                     <div>
                       <label className="block text-xs text-zinc-500 mb-1">Highlight</label>
-                      <input type="text" value={hero.highlight} onChange={(e) => setHero({ ...hero, highlight: e.target.value })} placeholder="Your Name" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                      <input type="text" value={hero.highlight} onChange={(e) => setHero((prev) => ({ ...prev, highlight: e.target.value }))} placeholder="Your Name" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs text-zinc-500 mb-1">Subtitle</label>
-                    <textarea value={hero.subtitle} onChange={(e) => setHero({ ...hero, subtitle: e.target.value })} rows={2} placeholder="A passionate developer..." className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                    <textarea value={hero.subtitle} onChange={(e) => setHero((prev) => ({ ...prev, subtitle: e.target.value }))} rows={2} placeholder="A passionate developer..." className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs text-zinc-500 mb-1">Primary Button</label>
-                      <input type="text" value={hero.cta_primary} onChange={(e) => setHero({ ...hero, cta_primary: e.target.value })} placeholder="View Dev Projects" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                      <input type="text" value={hero.cta_primary} onChange={(e) => setHero((prev) => ({ ...prev, cta_primary: e.target.value }))} placeholder="View Dev Projects" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
                     </div>
                     <div>
                       <label className="block text-xs text-zinc-500 mb-1">Secondary Button</label>
-                      <input type="text" value={hero.cta_secondary} onChange={(e) => setHero({ ...hero, cta_secondary: e.target.value })} placeholder="Contact Me" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                      <input type="text" value={hero.cta_secondary} onChange={(e) => setHero((prev) => ({ ...prev, cta_secondary: e.target.value }))} placeholder="Contact Me" className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
                     </div>
                   </div>
                 </div>
@@ -764,7 +783,7 @@ export default function SettingsPage() {
                         <div className="text-center max-w-lg">
                           <h1 className={`font-bold mb-3 ${previewMode === "mobile" ? "text-lg" : "text-2xl"}`} style={{ color: hero.use_custom_colors && hero.text_color ? hero.text_color : (hero.background_image ? "#ffffff" : previewPalette.text) }}>
                             {hero.title || "Hello, I'm"}{" "}
-                            <span style={{ color: hero.use_custom_colors && hero.highlight_color ? hero.highlight_color : previewPalette.accent }}>{hero.highlight || "Your Name"}</span>
+                            <span className="whitespace-pre-wrap" style={{ color: hero.use_custom_colors && hero.highlight_color ? hero.highlight_color : previewPalette.accent }}>{hero.highlight || "Your Name"}</span>
                           </h1>
                           <p className={`mb-4 ${previewMode === "mobile" ? "text-xs" : "text-sm"}`} style={{ color: hero.use_custom_colors && hero.subtitle_color ? hero.subtitle_color : (hero.background_image ? "rgba(255,255,255,0.8)" : previewPalette.muted) }}>
                             {hero.subtitle || "A passionate developer creating amazing experiences"}
@@ -855,6 +874,101 @@ export default function SettingsPage() {
                     rows={4}
                     className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                   />
+                </div>
+
+                <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(cv.use_custom_appearance)}
+                      onChange={(e) =>
+                        setCv({
+                          ...cv,
+                          use_custom_appearance: e.target.checked,
+                          appearance: cv.appearance || {
+                            accent: "",
+                            background: "",
+                            text: "",
+                            muted: "",
+                            card: "",
+                            border: "",
+                          },
+                        })
+                      }
+                    />
+                    Customize CV Appearance
+                  </label>
+
+                  {cv.use_custom_appearance && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {[
+                        { key: "accent", label: "Accent", fallback: previewPalette.accent },
+                        { key: "background", label: "Background", fallback: previewPalette.background },
+                        { key: "text", label: "Text", fallback: previewPalette.text },
+                        { key: "muted", label: "Muted", fallback: previewPalette.muted },
+                        { key: "card", label: "Card", fallback: previewPalette.card },
+                        { key: "border", label: "Border", fallback: previewPalette.border },
+                      ].map(({ key, label, fallback }) => (
+                        <div key={key}>
+                          <label className="block text-xs text-zinc-500 mb-1">{label}</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={isHexColor(cv.appearance?.[key as keyof NonNullable<CVSettings["appearance"]>] || "")
+                                ? cv.appearance?.[key as keyof NonNullable<CVSettings["appearance"]>] as string
+                                : fallback}
+                              onChange={(e) =>
+                                setCv({
+                                  ...cv,
+                                  appearance: {
+                                    ...(cv.appearance || {}),
+                                    [key]: e.target.value,
+                                  },
+                                })
+                              }
+                              className="w-10 h-9 border border-zinc-300 dark:border-zinc-600 rounded cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={(cv.appearance?.[key as keyof NonNullable<CVSettings["appearance"]>] as string) || ""}
+                              onChange={(e) =>
+                                setCv({
+                                  ...cv,
+                                  appearance: {
+                                    ...(cv.appearance || {}),
+                                    [key]: e.target.value,
+                                  },
+                                })
+                              }
+                              onBlur={(e) =>
+                                setCv({
+                                  ...cv,
+                                  appearance: {
+                                    ...(cv.appearance || {}),
+                                    [key]: normalizeHex(e.target.value),
+                                  },
+                                })
+                              }
+                              placeholder="Auto"
+                              className="flex-1 px-2 py-1 text-sm rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 rounded-xl border p-4" style={{ borderColor: cvPreviewPalette.border, background: cvPreviewPalette.background }}>
+                    <p className="text-xs mb-2" style={{ color: cvPreviewPalette.muted }}>CV Preview</p>
+                    <div className="rounded-lg border p-3" style={{ borderColor: cvPreviewPalette.border, background: cvPreviewPalette.card }}>
+                      <p className="text-lg font-semibold whitespace-pre-wrap" style={{ color: cvPreviewPalette.text }}>{hero.highlight || "Your Name"}</p>
+                      <p className="text-sm mt-1" style={{ color: cvPreviewPalette.muted }}>{cv.headline || "Your headline"}</p>
+                      <div className="mt-3 flex gap-2">
+                        <span className="px-2 py-1 rounded text-xs text-white" style={{ background: cvPreviewPalette.accent }}>View CV</span>
+                        <span className="px-2 py-1 rounded text-xs border" style={{ borderColor: cvPreviewPalette.border, color: cvPreviewPalette.text }}>Generate PDF</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -1019,7 +1133,7 @@ export default function SettingsPage() {
                             const updated = [...cv.experience];
                             updated[index] = {
                               ...updated[index],
-                              highlights: e.target.value.split("\n").map((v) => v.replace(/\s+$/, "")),
+                              highlights: e.target.value.split("\n"),
                             };
                             setCv({ ...cv, experience: updated });
                           }}
@@ -1678,7 +1792,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={platformHero.title}
-                  onChange={(e) => setPlatformHero({ ...platformHero, title: e.target.value })}
+                  onChange={(e) => setPlatformHero((prev) => ({ ...prev, title: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                 />
               </div>
@@ -1687,7 +1801,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={platformHero.highlight}
-                  onChange={(e) => setPlatformHero({ ...platformHero, highlight: e.target.value })}
+                  onChange={(e) => setPlatformHero((prev) => ({ ...prev, highlight: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                 />
               </div>
@@ -1697,7 +1811,7 @@ export default function SettingsPage() {
               <label className="block text-xs text-zinc-500 mb-1">Subtitle</label>
               <textarea
                 value={platformHero.subtitle}
-                onChange={(e) => setPlatformHero({ ...platformHero, subtitle: e.target.value })}
+                onChange={(e) => setPlatformHero((prev) => ({ ...prev, subtitle: e.target.value }))}
                 rows={2}
                 className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
               />
@@ -1709,7 +1823,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={platformHero.cta_primary}
-                  onChange={(e) => setPlatformHero({ ...platformHero, cta_primary: e.target.value })}
+                  onChange={(e) => setPlatformHero((prev) => ({ ...prev, cta_primary: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                 />
               </div>
@@ -1718,7 +1832,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   value={platformHero.cta_secondary}
-                  onChange={(e) => setPlatformHero({ ...platformHero, cta_secondary: e.target.value })}
+                  onChange={(e) => setPlatformHero((prev) => ({ ...prev, cta_secondary: e.target.value }))}
                   className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                 />
               </div>

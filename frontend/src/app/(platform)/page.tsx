@@ -69,7 +69,7 @@ export default async function LandingPage() {
             {hero.title}{" "}
           </span>
           <span
-            className={highlightColor ? "" : "text-blue-600 dark:text-blue-400"}
+            className={`${highlightColor ? "" : "text-blue-600 dark:text-blue-400"} whitespace-pre-wrap`}
             style={highlightColor ? { color: highlightColor } : undefined}
           >
             {hero.highlight}

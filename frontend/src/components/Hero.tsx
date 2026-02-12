@@ -68,7 +68,7 @@ export default function Hero({ settings, appearance }: HeroProps) {
             {hero.title}{" "}
           </span>
           <span
-            className={highlightColor ? "" : "text-[var(--app-accent)]"}
+            className={`${highlightColor ? "" : "text-[var(--app-accent)]"} whitespace-pre-wrap`}
             style={highlightColor ? { color: highlightColor } : undefined}
           >
             {hero.highlight}
