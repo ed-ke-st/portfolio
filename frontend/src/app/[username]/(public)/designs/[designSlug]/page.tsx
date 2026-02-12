@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDesignForUser } from "@/lib/designs";
+import { getDesignForUser, parseDesignIdFromPathSegment } from "@/lib/designs";
 import { getSettingsForUser } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
 import { getLargeUrl, getThumbnailUrl } from "@/lib/image";
@@ -8,12 +8,12 @@ import { getLargeUrl, getThumbnailUrl } from "@/lib/image";
 export default async function DesignDetailPage({
   params,
 }: {
-  params: Promise<{ username: string; designId: string }>;
+  params: Promise<{ username: string; designSlug: string }>;
 }) {
-  const { username, designId } = await params;
-  const parsedId = Number(designId);
+  const { username, designSlug } = await params;
+  const parsedId = parseDesignIdFromPathSegment(designSlug);
 
-  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+  if (!parsedId) {
     notFound();
   }
 

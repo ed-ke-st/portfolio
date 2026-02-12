@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DesignWork } from "@/types/design";
+import { buildDesignPathSegment } from "@/lib/designs";
 import DesignCard from "./DesignCard";
 import Lightbox from "./Lightbox";
 
@@ -56,7 +57,7 @@ export default function DesignGallery({ designs, showFilters = false, useDetailL
             <DesignCard
               key={design.id}
               design={design}
-              href={useDetailLinks ? `./${design.id}` : undefined}
+              href={useDetailLinks ? `./${buildDesignPathSegment(design)}` : undefined}
               onClick={useDetailLinks ? undefined : () => setSelectedDesign(design)}
             />
           ))}

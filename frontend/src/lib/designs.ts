@@ -28,6 +28,26 @@ export async function getDesignForUser(username: string, id: number): Promise<De
   return res.json();
 }
 
+export function designSlugPart(title: string): string {
+  const cleaned = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return cleaned || "design";
+}
+
+export function buildDesignPathSegment(design: Pick<DesignWork, "id" | "title">): string {
+  return `${designSlugPart(design.title)}-${design.id}`;
+}
+
+export function parseDesignIdFromPathSegment(segment: string): number | null {
+  const match = segment.match(/-(\d+)$/);
+  if (!match) return null;
+  const id = Number(match[1]);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 export const DESIGN_CATEGORIES = [
   { value: "logo", label: "Logos" },
   { value: "branding", label: "Branding" },
