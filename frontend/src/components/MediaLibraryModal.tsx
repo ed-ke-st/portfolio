@@ -6,15 +6,24 @@ import { listMediaAssets, MediaAsset } from "@/lib/admin-api";
 interface MediaLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (asset: MediaAsset) => void;
+  onSelect?: (asset: MediaAsset) => void;
+  onSelectMany?: (assets: MediaAsset[]) => void;
+  multiSelect?: boolean;
 }
 
-export default function MediaLibraryModal({ isOpen, onClose, onSelect }: MediaLibraryModalProps) {
+export default function MediaLibraryModal({
+  isOpen,
+  onClose,
+  onSelect,
+  onSelectMany,
+  multiSelect = false,
+}: MediaLibraryModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<MediaAsset[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
 
   const loadAssets = async (opts?: { reset?: boolean; cursor?: string; search?: string }) => {
     setLoading(true);
@@ -35,8 +44,19 @@ export default function MediaLibraryModal({ isOpen, onClose, onSelect }: MediaLi
     setItems([]);
     setNextCursor(null);
     setSearch("");
+    setSelectedIds({});
     loadAssets({ reset: true });
   }, [isOpen]);
+
+  const toggleAsset = (asset: MediaAsset) => {
+    if (!multiSelect) {
+      onSelect?.(asset);
+      return;
+    }
+    setSelectedIds((prev) => ({ ...prev, [asset.public_id]: !prev[asset.public_id] }));
+  };
+
+  const selectedAssets = items.filter((asset) => selectedIds[asset.public_id]);
 
   if (!isOpen) return null;
 
@@ -87,21 +107,46 @@ export default function MediaLibraryModal({ isOpen, onClose, onSelect }: MediaLi
               <button
                 type="button"
                 key={asset.public_id}
-                onClick={() => onSelect(asset)}
-                className="text-left border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden hover:border-blue-500 transition-colors"
+                onClick={() => toggleAsset(asset)}
+                className={`text-left border rounded-lg overflow-hidden transition-colors ${
+                  selectedIds[asset.public_id]
+                    ? "border-blue-500 ring-1 ring-blue-500/50"
+                    : "border-zinc-200 dark:border-zinc-700 hover:border-blue-500"
+                }`}
               >
                 <div className="aspect-square bg-zinc-100 dark:bg-zinc-900">
                   <img src={asset.url} alt={asset.filename || asset.public_id} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-2">
                   <p className="text-[11px] text-zinc-600 dark:text-zinc-300 truncate">{asset.filename || asset.public_id}</p>
+                  {multiSelect && selectedIds[asset.public_id] && (
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400">Selected</p>
+                  )}
                 </div>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 flex justify-end">
+        <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 flex justify-between">
+          {multiSelect ? (
+            <p className="text-xs text-zinc-500 self-center">
+              {selectedAssets.length} selected
+            </p>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            {multiSelect && (
+              <button
+                type="button"
+                onClick={() => onSelectMany?.(selectedAssets)}
+                disabled={selectedAssets.length === 0}
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+              >
+                Add Selected
+              </button>
+            )}
           {nextCursor && (
             <button
               type="button"
@@ -112,6 +157,7 @@ export default function MediaLibraryModal({ isOpen, onClose, onSelect }: MediaLi
               {loading ? "Loading..." : "Load More"}
             </button>
           )}
+          </div>
         </div>
       </div>
     </div>

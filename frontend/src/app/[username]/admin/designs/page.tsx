@@ -271,6 +271,16 @@ export default function DesignsPage() {
       if (prev.images.includes(asset.url)) return prev;
       return { ...prev, images: [...prev.images, asset.url] };
     });
+  };
+
+  const handleSelectManyMediaAssets = (assets: MediaAsset[]) => {
+    if (!assets.length) return;
+    setForm((prev) => {
+      const existing = new Set(prev.images);
+      const additions = assets.map((asset) => asset.url).filter((url) => !existing.has(url));
+      if (additions.length === 0) return prev;
+      return { ...prev, images: [...prev.images, ...additions] };
+    });
     setShowMediaLibrary(false);
   };
 
@@ -286,6 +296,8 @@ export default function DesignsPage() {
         isOpen={showMediaLibrary}
         onClose={() => setShowMediaLibrary(false)}
         onSelect={handleSelectMediaAsset}
+        onSelectMany={handleSelectManyMediaAssets}
+        multiSelect
       />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Design Projects</h1>
