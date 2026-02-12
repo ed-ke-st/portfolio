@@ -66,6 +66,7 @@ export default function DesignsPage() {
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [integrationsModalMessage, setIntegrationsModalMessage] = useState("");
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  const [draggingImageIndex, setDraggingImageIndex] = useState<number | null>(null);
 
   const fetchDesigns = async () => {
     try {
@@ -264,6 +265,30 @@ export default function DesignsPage() {
 
   const setPrimaryImage = (index: number) => {
     setForm({ ...form, primary_image: index });
+  };
+
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    setForm((prev) => {
+      const images = [...prev.images];
+      const [moved] = images.splice(fromIndex, 1);
+      images.splice(toIndex, 0, moved);
+
+      let nextPrimary = prev.primary_image;
+      if (prev.primary_image === fromIndex) {
+        nextPrimary = toIndex;
+      } else if (fromIndex < prev.primary_image && toIndex >= prev.primary_image) {
+        nextPrimary = prev.primary_image - 1;
+      } else if (fromIndex > prev.primary_image && toIndex <= prev.primary_image) {
+        nextPrimary = prev.primary_image + 1;
+      }
+
+      return {
+        ...prev,
+        images,
+        primary_image: nextPrimary,
+      };
+    });
   };
 
   const handleSelectMediaAsset = (asset: MediaAsset) => {
@@ -471,7 +496,7 @@ export default function DesignsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  Images {form.images.length > 0 && <span className="text-zinc-500">(click to set as thumbnail)</span>}
+                  Images {form.images.length > 0 && <span className="text-zinc-500">(click to set thumbnail, drag to reorder)</span>}
                 </label>
 
                 {form.images.length > 0 && (
@@ -479,11 +504,21 @@ export default function DesignsPage() {
                     {form.images.map((url, index) => (
                       <div
                         key={index}
+                        draggable
+                        onDragStart={() => setDraggingImageIndex(index)}
+                        onDragEnd={() => setDraggingImageIndex(null)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggingImageIndex === null) return;
+                          moveImage(draggingImageIndex, index);
+                          setDraggingImageIndex(null);
+                        }}
                         className={`relative w-24 h-24 rounded-lg overflow-hidden group cursor-pointer border-2 ${
                           index === form.primary_image
                             ? "border-purple-500"
                             : "border-transparent"
-                        }`}
+                        } ${draggingImageIndex === index ? "opacity-60" : ""}`}
                         onClick={() => setPrimaryImage(index)}
                       >
                         <img
