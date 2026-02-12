@@ -432,7 +432,6 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: "appearance" as TabType, label: "Appearance" },
-    { id: "personal" as TabType, label: "Personal" },
     { id: "footer" as TabType, label: "Footer" },
     { id: "integrations" as TabType, label: "Integrations" },
     { id: "domain" as TabType, label: "Domain" },
@@ -995,6 +994,33 @@ export default function SettingsPage() {
                         <span className="px-2 py-1 rounded text-xs border" style={{ borderColor: cvPreviewPalette.border, color: cvPreviewPalette.text }}>Generate PDF</span>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Full CV Page Preview</p>
+                      {currentUser?.username && (
+                        <a
+                          href={`/${currentUser.username}/cv`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-500"
+                        >
+                          Open in new tab
+                        </a>
+                      )}
+                    </div>
+                    {cv.enabled && currentUser?.username ? (
+                      <div className="rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800">
+                        <iframe
+                          src={`/${currentUser.username}/cv`}
+                          title="CV page preview"
+                          className="w-full h-[720px] bg-white"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-500">Enable CV to preview the full page.</p>
+                    )}
                   </div>
                 </div>
 

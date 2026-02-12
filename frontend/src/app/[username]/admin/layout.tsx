@@ -81,6 +81,7 @@ export default function AdminLayout({
     { href: adminBase, label: "Dashboard" },
     { href: `${adminBase}/projects`, label: "Dev Projects" },
     { href: `${adminBase}/designs`, label: "Design Projects" },
+    { href: `${adminBase}/personal`, label: "Personal" },
     { href: `${adminBase}/settings`, label: "Settings" },
   ];
 
