@@ -51,7 +51,7 @@ export default async function DesignsPage({
         <DesignGallery
           designs={designs}
           showFilters
-          detailHrefBuilder={(design) => `./${design.id}`}
+          useDetailLinks
         />
       </div>
     </div>
