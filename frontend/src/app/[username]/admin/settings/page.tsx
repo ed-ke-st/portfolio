@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import {
   getAdminSettings,
   updateSetting,
@@ -276,14 +277,15 @@ export default function SettingsPage() {
         }
         if (data.footer) setFooter(data.footer);
         if (data.appearance) {
-          setAppearance({
-            ...appearance,
-            ...data.appearance,
+          const appearanceData = data.appearance;
+          setAppearance((prev) => ({
+            ...prev,
+            ...appearanceData,
             sections: {
-              ...appearance.sections,
-              ...(data.appearance.sections || {}),
+              ...prev.sections,
+              ...(appearanceData.sections || {}),
             },
-          });
+          }));
         }
         if (data.integrations) {
           setIntegrations({
@@ -540,7 +542,7 @@ export default function SettingsPage() {
                 <div className="relative min-h-[200px] flex items-center justify-center p-4" style={{ background: hero.background_image ? undefined : appearance.sections?.hero || previewPalette.background }}>
                   {hero.background_image && (
                     <>
-                      <img src={hero.background_image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      <Image src={hero.background_image} alt="" fill className="object-cover" />
                       <div className="absolute inset-0" style={{ backgroundColor: `rgba(0, 0, 0, ${(hero.background_overlay ?? 50) / 100})` }} />
                     </>
                   )}
@@ -740,7 +742,7 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Background Image</p>
                 {hero.background_image && (
                   <div className="mb-3 relative inline-block">
-                    <img src={hero.background_image} alt="Hero background" className="h-24 rounded-lg object-cover" />
+                    <Image src={hero.background_image} alt="Hero background" width={96} height={96} className="h-24 rounded-lg object-cover" />
                     <button type="button" onClick={() => setHero({ ...hero, background_image: "" })} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">&times;</button>
                   </div>
                 )}
@@ -800,7 +802,7 @@ export default function SettingsPage() {
                     <div className={`relative overflow-hidden rounded-lg transition-all duration-300 ${previewMode === "mobile" ? "w-[280px]" : "w-full"}`} style={{ background: hero.background_image ? undefined : appearance.sections?.hero || previewPalette.background, minHeight: previewMode === "mobile" ? "300px" : "250px" }}>
                       {hero.background_image && (
                         <>
-                          <img src={hero.background_image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          <Image src={hero.background_image} alt="" fill className="object-cover" />
                           <div className="absolute inset-0" style={{ backgroundColor: `rgba(0, 0, 0, ${(hero.background_overlay ?? 50) / 100})` }} />
                         </>
                       )}
@@ -1035,9 +1037,11 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   {cv.photo_url && (
-                    <img
+                    <Image
                       src={cv.photo_url}
                       alt="CV photo preview"
+                      width={80}
+                      height={80}
                       className="mt-3 h-20 w-20 object-cover rounded-lg border border-zinc-300 dark:border-zinc-600"
                     />
                   )}
@@ -1930,7 +1934,7 @@ export default function SettingsPage() {
               <p className="text-xs text-zinc-500 mb-1">Background Image URL</p>
               {platformHero.background_image && (
                 <div className="mb-2 relative inline-block">
-                  <img src={platformHero.background_image} alt="Platform hero background" className="h-24 rounded-lg object-cover" />
+                  <Image src={platformHero.background_image} alt="Platform hero background" width={96} height={96} className="h-24 rounded-lg object-cover" />
                   <button
                     type="button"
                     onClick={() => setPlatformHero({ ...platformHero, background_image: "" })}
