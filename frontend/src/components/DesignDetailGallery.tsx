@@ -38,7 +38,7 @@ export default function DesignDetailGallery({ design }: DesignDetailGalleryProps
       </div>
 
       {design.images.length > 1 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {design.images.map((image, index) => (
             <button
               key={`${image}-${index}`}
@@ -53,7 +53,7 @@ export default function DesignDetailGallery({ design }: DesignDetailGalleryProps
               <img
                 src={getThumbnailUrl(image)}
                 alt={`${design.title} image ${index + 1}`}
-                className="w-full h-32 object-cover"
+                className="w-16 h-16 sm:w-20 sm:h-20 object-cover"
                 loading="lazy"
               />
             </button>
