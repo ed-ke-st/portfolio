@@ -1,12 +1,10 @@
-import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getDesignForUser, parseDesignIdFromPathSegment } from "@/lib/designs";
 import { getSettingsForUser } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
 import { getLargeUrl, getThumbnailUrl } from "@/lib/image";
 
-export default async function DesignDetailPage({
+export default async function DesignDirectDetailPage({
   params,
 }: {
   params: Promise<{ username: string; designSlug: string }>;
@@ -32,21 +30,21 @@ export default async function DesignDetailPage({
       >
         <div className="max-w-6xl mx-auto">
           <div className="mb-6 flex items-center gap-4 text-sm">
-            <Link
-              href="../"
+            <a
+              href="./designs"
               className="inline-flex items-center gap-1 text-[var(--app-muted)] hover:text-[var(--app-text)] transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
               Back to Designs
-            </Link>
-            <Link
-              href="../../"
+            </a>
+            <a
+              href="./"
               className="text-[var(--app-muted)] hover:text-[var(--app-text)] transition-colors"
             >
               Home
-            </Link>
+            </a>
           </div>
 
           <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-5 sm:p-8">
@@ -68,11 +66,9 @@ export default async function DesignDetailPage({
             {design.images.length > 0 && (
               <div className="mt-6 space-y-4">
                 <div className="rounded-xl overflow-hidden border border-[var(--app-border)] bg-[var(--app-bg)]">
-                  <Image
+                  <img
                     src={getLargeUrl(design.images[design.primary_image] || design.images[0])}
                     alt={design.title}
-                    width={800}
-                    height={600}
                     className="w-full h-auto object-cover"
                   />
                 </div>
@@ -87,12 +83,11 @@ export default async function DesignDetailPage({
                         rel="noreferrer"
                         className="rounded-lg overflow-hidden border border-[var(--app-border)] bg-[var(--app-bg)]"
                       >
-                        <Image
+                        <img
                           src={getThumbnailUrl(image)}
                           alt={`${design.title} image ${index + 1}`}
-                          width={200}
-                          height={128}
                           className="w-full h-32 object-cover"
+                          loading="lazy"
                         />
                       </a>
                     ))}
