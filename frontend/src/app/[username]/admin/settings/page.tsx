@@ -20,6 +20,7 @@ import {
 } from "@/lib/settings-api";
 import {
   uploadFile,
+  MediaAsset,
   uploadPlatformImageToBlob,
   setCustomDomain,
   syncPlatformConfigToEdge,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/admin-api";
 import { getMe, getToken, User } from "@/lib/auth";
 import { defaultPlatformHero, PlatformHeroSettings } from "@/lib/platform-config";
+import MediaLibraryModal from "@/components/MediaLibraryModal";
 
 type TabType = "appearance" | "personal" | "footer" | "integrations" | "domain" | "platform";
 
@@ -55,6 +57,8 @@ export default function SettingsPage() {
   const [domainStatus, setDomainStatus] = useState<"not_set" | "unconfigured" | "not_verified" | "verified">("not_set");
   const [domainExpectedA, setDomainExpectedA] = useState<string | null>(null);
   const [domainExpectedCname, setDomainExpectedCname] = useState<string | null>(null);
+  const [domainExpectedNs, setDomainExpectedNs] = useState<string[]>([]);
+  const [domainFoundNs, setDomainFoundNs] = useState<string[]>([]);
   const [domainSiteStatus, setDomainSiteStatus] = useState<"unchecked" | "propagating" | "reachable">("unchecked");
   const [domainSiteChecks, setDomainSiteChecks] = useState<{
     https?: { ok: boolean; status_code?: number; error?: string } | null;
@@ -62,6 +66,7 @@ export default function SettingsPage() {
   } | null>(null);
   const [platformHero, setPlatformHero] = useState<PlatformHeroSettings>(defaultPlatformHero);
   const [uploadingPlatformHeroBg, setUploadingPlatformHeroBg] = useState(false);
+  const [mediaLibraryTarget, setMediaLibraryTarget] = useState<"hero_bg" | "cv_photo" | "platform_hero_bg" | null>(null);
   const isApexDomain = domainValue && !domainValue.includes(".")
     ? false
     : Boolean(domainValue && domainValue.split(".").length === 2);
@@ -201,6 +206,8 @@ export default function SettingsPage() {
             setDomainStatus(status.status);
             setDomainExpectedA(status.expected_a || null);
             setDomainExpectedCname(status.expected_cname || null);
+            setDomainExpectedNs(status.expected_ns || []);
+            setDomainFoundNs(status.found_ns || []);
             setDomainSiteStatus(status.site_status || "unchecked");
             setDomainSiteChecks(status.site_checks || null);
           } catch (err) {
@@ -397,6 +404,17 @@ export default function SettingsPage() {
       return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
     }
     return value;
+  };
+
+  const handleSelectMediaAsset = (asset: MediaAsset) => {
+    if (mediaLibraryTarget === "hero_bg") {
+      setHero((prev) => ({ ...prev, background_image: asset.url }));
+    } else if (mediaLibraryTarget === "cv_photo") {
+      setCv((prev) => ({ ...prev, photo_url: asset.url }));
+    } else if (mediaLibraryTarget === "platform_hero_bg") {
+      setPlatformHero((prev) => ({ ...prev, background_image: asset.url }));
+    }
+    setMediaLibraryTarget(null);
   };
 
   const normalizeCv = (current: CVSettings): CVSettings => ({
@@ -746,6 +764,13 @@ export default function SettingsPage() {
                       }
                     }} className="hidden" />
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => setMediaLibraryTarget("hero_bg")}
+                    className="px-4 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200"
+                  >
+                    Library
+                  </button>
                 </div>
                 {hero.background_image && (
                   <div className="mt-3">
@@ -1001,6 +1026,13 @@ export default function SettingsPage() {
                         className="hidden"
                       />
                     </label>
+                    <button
+                      type="button"
+                      onClick={() => setMediaLibraryTarget("cv_photo")}
+                      className="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200 text-sm"
+                    >
+                      Library
+                    </button>
                   </div>
                   {cv.photo_url && (
                     <img
@@ -1692,7 +1724,7 @@ export default function SettingsPage() {
                 className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                 placeholder="yourdomain.com or subdomain.yourdomain.com"
               />
-              {domainStatus !== "verified" && (domainExpectedA || domainExpectedCname) && (
+              {domainStatus !== "verified" && (domainExpectedA || domainExpectedCname || domainExpectedNs.length > 0) && (
                 <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-3 text-xs text-zinc-600 dark:text-zinc-300">
                   <p className="font-medium text-zinc-700 dark:text-zinc-200">DNS Configuration Required</p>
                   <p className="mt-1">
@@ -1719,6 +1751,15 @@ export default function SettingsPage() {
                       <p><span className="text-zinc-500">Value:</span> <span className="font-medium">{domainExpectedA}</span></p>
                     </div>
                   )}
+                  {domainExpectedNs.length > 0 && (
+                    <div className="mt-2 p-2 bg-zinc-100 dark:bg-zinc-800 rounded font-mono">
+                      <p><span className="text-zinc-500">Type:</span> <span className="font-medium">NS (nameservers)</span></p>
+                      <p><span className="text-zinc-500">Value:</span> <span className="font-medium">{domainExpectedNs.join(", ")}</span></p>
+                      {domainFoundNs.length > 0 && (
+                        <p><span className="text-zinc-500">Detected:</span> <span className="font-medium">{domainFoundNs.join(", ")}</span></p>
+                      )}
+                    </div>
+                  )}
                   <p className="mt-2 text-zinc-500">DNS changes can take up to 48 hours to propagate.</p>
                 </div>
               )}
@@ -1733,6 +1774,8 @@ export default function SettingsPage() {
                     setDomainStatus(status.status);
                     setDomainExpectedA(status.expected_a || null);
                     setDomainExpectedCname(status.expected_cname || null);
+                    setDomainExpectedNs(status.expected_ns || []);
+                    setDomainFoundNs(status.found_ns || []);
                     setDomainSiteStatus(status.site_status || "unchecked");
                     setDomainSiteChecks(status.site_checks || null);
                   } catch (err) {
@@ -1754,6 +1797,8 @@ export default function SettingsPage() {
                       setDomainStatus("not_set");
                       setDomainExpectedA(null);
                       setDomainExpectedCname(null);
+                      setDomainExpectedNs([]);
+                      setDomainFoundNs([]);
                       setDomainSiteStatus("unchecked");
                       setDomainSiteChecks(null);
                       setMessage("Domain removed");
@@ -1924,6 +1969,13 @@ export default function SettingsPage() {
                     className="hidden"
                   />
                 </label>
+                <button
+                  type="button"
+                  onClick={() => setMediaLibraryTarget("platform_hero_bg")}
+                  className="px-4 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200"
+                >
+                  Library
+                </button>
               </div>
             </div>
 
@@ -1967,6 +2019,12 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      <MediaLibraryModal
+        isOpen={mediaLibraryTarget !== null}
+        onClose={() => setMediaLibraryTarget(null)}
+        onSelect={handleSelectMediaAsset}
+      />
     </div>
   );
 }

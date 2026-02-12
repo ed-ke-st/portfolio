@@ -28,7 +28,7 @@ See `.env.example` for all required variables:
 - `SCREENSHOTONE_ACCESS_KEY` — project screenshot capture (optional if using per-user integrations)
 - `ALLOW_ENV_INTEGRATIONS` — allow env vars as a fallback for integrations (default: false)
 - `ALLOW_LOCAL_UPLOADS` — allow local filesystem uploads when Cloudinary isn’t set (default: false)
-- `DOMAIN_CHECK_A` / `DOMAIN_CHECK_CNAME` — optional DNS verification targets for custom domains
+- `DOMAIN_CHECK_A` / `DOMAIN_CHECK_CNAME` / `DOMAIN_CHECK_NS` — optional DNS verification targets for custom domains
 - `REQUIRE_INVITE` — require an invite token to sign up (default: false)
 
 ## Invite-only signup

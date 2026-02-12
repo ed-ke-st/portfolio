@@ -119,6 +119,44 @@ export async function uploadFile(file: File): Promise<{ filename: string; url: s
   return res.json();
 }
 
+export interface MediaAsset {
+  public_id: string;
+  url: string;
+  format?: string;
+  bytes?: number;
+  width?: number;
+  height?: number;
+  created_at?: string;
+  filename?: string;
+  resource_type?: string;
+}
+
+export interface MediaAssetListResponse {
+  resources: MediaAsset[];
+  next_cursor?: string | null;
+}
+
+export async function listMediaAssets(cursor?: string, search?: string): Promise<MediaAssetListResponse> {
+  const token = getToken();
+  const params = new URLSearchParams();
+  params.set("max_results", "30");
+  if (cursor) params.set("cursor", cursor);
+  if (search && search.trim()) params.set("search", search.trim());
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/media?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Failed to load media library");
+  }
+  return res.json();
+}
+
 export async function testCloudinary(): Promise<{ ok: boolean }> {
   const token = getToken();
   const res = await fetch(`${API_BASE_URL}/api/admin/integrations/cloudinary/test`, {
@@ -263,8 +301,10 @@ export interface DomainStatus {
   domain?: string | null;
   expected_cname?: string | null;
   expected_a?: string | null;
+  expected_ns?: string[];
   found_cname?: string | null;
   found_a?: string[];
+  found_ns?: string[];
   site_status?: "unchecked" | "propagating" | "reachable";
   site_checks?: {
     https?: { ok: boolean; status_code?: number; error?: string } | null;

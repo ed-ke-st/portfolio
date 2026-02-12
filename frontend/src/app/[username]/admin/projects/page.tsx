@@ -9,10 +9,12 @@ import {
   deleteProject,
   uploadFile,
   captureProjectScreenshot,
+  MediaAsset,
 } from "@/lib/admin-api";
 import { Project } from "@/types/project";
 import Cropper, { Area } from "react-easy-crop";
 import IntegrationsRequiredModal from "@/components/IntegrationsRequiredModal";
+import MediaLibraryModal from "@/components/MediaLibraryModal";
 
 interface ProjectFormData {
   title: string;
@@ -55,6 +57,7 @@ export default function ProjectsPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [integrationsModalMessage, setIntegrationsModalMessage] = useState("");
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
 
   const fetchProjects = async () => {
     try {
@@ -258,6 +261,11 @@ export default function ProjectsPage() {
     setScreenshotSrc(null);
   };
 
+  const handleSelectMediaAsset = (asset: MediaAsset) => {
+    setForm((prev) => ({ ...prev, image_url: asset.url }));
+    setShowMediaLibrary(false);
+  };
+
   return (
     <div>
       <IntegrationsRequiredModal
@@ -265,6 +273,11 @@ export default function ProjectsPage() {
         username={username}
         message={integrationsModalMessage || "This feature requires Cloudinary to be configured."}
         onClose={() => setShowIntegrationsModal(false)}
+      />
+      <MediaLibraryModal
+        isOpen={showMediaLibrary}
+        onClose={() => setShowMediaLibrary(false)}
+        onSelect={handleSelectMediaAsset}
       />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Dev Projects</h1>
@@ -358,6 +371,13 @@ export default function ProjectsPage() {
                     title={!form.live_url ? "Add a Live URL to capture a screenshot" : ""}
                   >
                     {capturing ? "Capturing..." : originalScreenshotSrc ? "Recapture" : "Capture"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowMediaLibrary(true)}
+                    className="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200 font-medium"
+                  >
+                    Library
                   </button>
                 </div>
               </div>

@@ -1054,6 +1054,66 @@ async def upload_file(
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
+@app.get("/api/admin/media")
+async def list_media(
+    cursor: str | None = None,
+    max_results: int = 30,
+    search: str | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    cloudinary_url = _get_cloudinary_url(db, current_user)
+    if not cloudinary_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Cloudinary is not configured. Add your Cloudinary URL in Settings -> Integrations.",
+        )
+
+    _configure_cloudinary(cloudinary_url)
+    folder_prefix = f"portfolio/{current_user.username}/"
+    page_size = max(1, min(max_results, 100))
+
+    try:
+        result = cloudinary.api.resources(
+            type="upload",
+            resource_type="image",
+            prefix=folder_prefix,
+            max_results=page_size,
+            next_cursor=cursor,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load media library: {str(exc)}")
+
+    resources = []
+    search_term = (search or "").strip().lower()
+    for item in result.get("resources", []):
+        public_id = str(item.get("public_id", ""))
+        filename = public_id.split("/")[-1] if public_id else ""
+        secure_url = item.get("secure_url")
+        if not secure_url:
+            continue
+        if search_term and search_term not in filename.lower() and search_term not in public_id.lower():
+            continue
+        resources.append(
+            {
+                "public_id": public_id,
+                "url": secure_url,
+                "format": item.get("format"),
+                "bytes": item.get("bytes"),
+                "width": item.get("width"),
+                "height": item.get("height"),
+                "created_at": item.get("created_at"),
+                "filename": filename,
+                "resource_type": item.get("resource_type"),
+            }
+        )
+
+    return {
+        "resources": resources,
+        "next_cursor": result.get("next_cursor"),
+    }
+
+
 # ============== PDF Processing ==============
 
 @app.post("/api/admin/pdf/preview")
@@ -1464,8 +1524,13 @@ async def get_domain_status(
 
     expected_cname = os.getenv("DOMAIN_CHECK_CNAME", "").strip().lower().rstrip(".")
     expected_a = os.getenv("DOMAIN_CHECK_A", "").strip()
+    expected_ns = [
+        value.strip().lower().rstrip(".")
+        for value in os.getenv("DOMAIN_CHECK_NS", "").split(",")
+        if value.strip()
+    ]
 
-    if not expected_cname and not expected_a:
+    if not expected_cname and not expected_a and not expected_ns:
         return {"status": "unconfigured", "domain": domain}
 
     result = {
@@ -1473,8 +1538,10 @@ async def get_domain_status(
         "domain": domain,
         "expected_cname": expected_cname or None,
         "expected_a": expected_a or None,
+        "expected_ns": expected_ns,
         "found_cname": None,
         "found_a": [],
+        "found_ns": [],
         "site_status": "unchecked",
         "site_checks": {
             "https": None,
@@ -1495,10 +1562,28 @@ async def get_domain_status(
     except Exception:
         result["found_a"] = []
 
+    def _resolve_ns_records(host: str) -> list[str]:
+        labels = host.strip(".").split(".")
+        for i in range(len(labels)):
+            candidate = ".".join(labels[i:])
+            if not candidate:
+                continue
+            try:
+                ns_answers = dns.resolver.resolve(candidate, "NS")
+                records = sorted({str(r.target).rstrip(".").lower() for r in ns_answers})
+                if records:
+                    return records
+            except Exception:
+                continue
+        return []
+
+    result["found_ns"] = _resolve_ns_records(domain)
+
     cname_ok = expected_cname and result["found_cname"] == expected_cname
     a_ok = expected_a and expected_a in result["found_a"]
+    ns_ok = bool(expected_ns) and all(ns in result["found_ns"] for ns in expected_ns)
 
-    if cname_ok or a_ok:
+    if cname_ok or a_ok or ns_ok:
         result["status"] = "verified"
 
         reachable = False

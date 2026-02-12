@@ -8,6 +8,7 @@ import {
   updateDesign,
   deleteDesign,
   uploadFile,
+  MediaAsset,
   previewPdf,
   extractPdfPages,
   DesignWork,
@@ -15,6 +16,7 @@ import {
   FailedPage,
 } from "@/lib/admin-api";
 import IntegrationsRequiredModal from "@/components/IntegrationsRequiredModal";
+import MediaLibraryModal from "@/components/MediaLibraryModal";
 
 const CATEGORIES = ["logo", "branding", "ui", "print", "other"];
 
@@ -63,6 +65,7 @@ export default function DesignsPage() {
   const [pdfPreviewTruncated, setPdfPreviewTruncated] = useState(false);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [integrationsModalMessage, setIntegrationsModalMessage] = useState("");
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
 
   const fetchDesigns = async () => {
     try {
@@ -263,6 +266,14 @@ export default function DesignsPage() {
     setForm({ ...form, primary_image: index });
   };
 
+  const handleSelectMediaAsset = (asset: MediaAsset) => {
+    setForm((prev) => {
+      if (prev.images.includes(asset.url)) return prev;
+      return { ...prev, images: [...prev.images, asset.url] };
+    });
+    setShowMediaLibrary(false);
+  };
+
   return (
     <div>
       <IntegrationsRequiredModal
@@ -270,6 +281,11 @@ export default function DesignsPage() {
         username={username}
         message={integrationsModalMessage || "This feature requires Cloudinary to be configured."}
         onClose={() => setShowIntegrationsModal(false)}
+      />
+      <MediaLibraryModal
+        isOpen={showMediaLibrary}
+        onClose={() => setShowMediaLibrary(false)}
+        onSelect={handleSelectMediaAsset}
       />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Design Projects</h1>
@@ -494,6 +510,13 @@ export default function DesignsPage() {
                       className="hidden"
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowMediaLibrary(true)}
+                    className="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200 font-medium"
+                  >
+                    Library
+                  </button>
                   <label className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-medium rounded-lg cursor-pointer transition-colors">
                     Upload PDF
                     <input

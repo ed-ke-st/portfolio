@@ -8,6 +8,7 @@ import Lightbox from "./Lightbox";
 interface DesignGalleryProps {
   designs: DesignWork[];
   showFilters?: boolean;
+  detailHrefBuilder?: (design: DesignWork) => string;
 }
 
 const CATEGORIES = [
@@ -19,7 +20,7 @@ const CATEGORIES = [
   { value: "other", label: "Other" },
 ];
 
-export default function DesignGallery({ designs, showFilters = false }: DesignGalleryProps) {
+export default function DesignGallery({ designs, showFilters = false, detailHrefBuilder }: DesignGalleryProps) {
   const [selectedDesign, setSelectedDesign] = useState<DesignWork | null>(null);
   const [activeCategory, setActiveCategory] = useState("");
 
@@ -55,13 +56,14 @@ export default function DesignGallery({ designs, showFilters = false }: DesignGa
             <DesignCard
               key={design.id}
               design={design}
-              onClick={() => setSelectedDesign(design)}
+              href={detailHrefBuilder ? detailHrefBuilder(design) : undefined}
+              onClick={detailHrefBuilder ? undefined : () => setSelectedDesign(design)}
             />
           ))}
         </div>
       )}
 
-      {selectedDesign && (
+      {selectedDesign && !detailHrefBuilder && (
         <Lightbox
           design={selectedDesign}
           onClose={() => setSelectedDesign(null)}

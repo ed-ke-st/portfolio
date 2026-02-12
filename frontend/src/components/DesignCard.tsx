@@ -1,22 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { DesignWork } from "@/types/design";
 import { getThumbnailUrl } from "@/lib/image";
 
 interface DesignCardProps {
   design: DesignWork;
-  onClick: () => void;
+  onClick?: () => void;
+  href?: string;
 }
 
-export default function DesignCard({ design, onClick }: DesignCardProps) {
+export default function DesignCard({ design, onClick, href }: DesignCardProps) {
   const primaryImage = design.images[design.primary_image] || design.images[0];
   const thumbnailSrc = primaryImage ? getThumbnailUrl(primaryImage) : null;
-
-  return (
-    <button
-      onClick={onClick}
-      className="group relative bg-[var(--app-card)] rounded-xl border border-[var(--app-border)] overflow-hidden hover:border-[var(--app-accent)] transition-all duration-300 hover:shadow-lg text-left w-full"
-    >
+  const cardClassName = "group relative bg-[var(--app-card)] rounded-xl border border-[var(--app-border)] overflow-hidden hover:border-[var(--app-accent)] transition-all duration-300 hover:shadow-lg text-left w-full";
+  const content = (
+    <>
       {/* Image */}
       <div className="aspect-square bg-[var(--app-bg)] flex items-center justify-center overflow-hidden">
         {thumbnailSrc ? (
@@ -45,6 +44,20 @@ export default function DesignCard({ design, onClick }: DesignCardProps) {
           {design.images.length} images
         </div>
       )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={cardClassName}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button onClick={onClick} className={cardClassName} type="button">
+      {content}
     </button>
   );
 }
