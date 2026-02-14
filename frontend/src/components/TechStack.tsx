@@ -86,6 +86,13 @@ export default function TechStack({ skills, skillCategories, appearance }: TechS
   );
 }
 
+function resolveSkillBadge(skill: Skill): string {
+  const custom = (skill.abbreviation || "").trim();
+  if (custom) return custom;
+  const fallback = skill.name.trim().slice(0, 2);
+  return fallback || "--";
+}
+
 function SkillCard({ skill }: { skill: Skill }) {
   const level = typeof skill.level === "number" ? Math.max(0, Math.min(100, skill.level)) : 75;
 
@@ -93,7 +100,7 @@ function SkillCard({ skill }: { skill: Skill }) {
     <div className="flex flex-col items-center justify-center p-4 bg-[var(--app-card)] rounded-xl border border-[var(--app-border)] hover:border-[var(--app-accent)] transition-colors group">
       <div className="w-12 h-12 flex items-center justify-center bg-[var(--app-bg)] rounded-lg mb-3 transition-colors">
         <span className="text-lg font-bold text-[var(--app-muted)] group-hover:text-[var(--app-accent)]">
-          {skill.name.slice(0, 2)}
+          {resolveSkillBadge(skill)}
         </span>
       </div>
       <span className="text-sm font-medium text-[var(--app-text)] text-center">

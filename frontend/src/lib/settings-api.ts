@@ -21,6 +21,7 @@ export interface Skill {
   category: string;
   mainCategory?: string;
   level?: number;
+  abbreviation?: string;
 }
 
 export interface SkillCategory {

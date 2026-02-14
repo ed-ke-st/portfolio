@@ -97,7 +97,9 @@ export function SettingsPageClient({
   });
 
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [newSkill, setNewSkill] = useState({ name: "", category: "", mainCategory: "", level: 75 });
+  const [newSkill, setNewSkill] = useState({ name: "", category: "", mainCategory: "", level: 75, abbreviation: "" });
+  const [editingSkillIndex, setEditingSkillIndex] = useState<number | null>(null);
+  const [editingSkillDraft, setEditingSkillDraft] = useState<Skill | null>(null);
   const [skillCategories, setSkillCategories] = useState<SkillCategory[]>([]);
   const [newMainCategory, setNewMainCategory] = useState("");
   const [newSubCategory, setNewSubCategory] = useState("");
@@ -354,14 +356,41 @@ export function SettingsPageClient({
 
   const addSkill = () => {
     if (newSkill.name && newSkill.category && newSkill.mainCategory) {
-      const updated = [...skills, newSkill];
+      const updated = [...skills, { ...newSkill, abbreviation: newSkill.abbreviation?.trim() || "" }];
       setSkills(updated);
-      setNewSkill({ name: "", category: "", mainCategory: "", level: 75 });
+      setNewSkill({ name: "", category: "", mainCategory: "", level: 75, abbreviation: "" });
     }
   };
 
   const removeSkill = (index: number) => {
     setSkills(skills.filter((_, i) => i !== index));
+    if (editingSkillIndex === index) {
+      setEditingSkillIndex(null);
+      setEditingSkillDraft(null);
+    }
+  };
+
+  const startEditSkill = (index: number) => {
+    setEditingSkillIndex(index);
+    setEditingSkillDraft({ ...skills[index] });
+  };
+
+  const cancelEditSkill = () => {
+    setEditingSkillIndex(null);
+    setEditingSkillDraft(null);
+  };
+
+  const saveEditSkill = () => {
+    if (editingSkillIndex === null || !editingSkillDraft) return;
+    if (!editingSkillDraft.name || !editingSkillDraft.mainCategory || !editingSkillDraft.category) return;
+    const next = [...skills];
+    next[editingSkillIndex] = {
+      ...editingSkillDraft,
+      abbreviation: editingSkillDraft.abbreviation?.trim() || "",
+    };
+    setSkills(next);
+    setEditingSkillIndex(null);
+    setEditingSkillDraft(null);
   };
 
   const addMainCategory = () => {
@@ -403,6 +432,51 @@ export function SettingsPageClient({
   const getSubcategories = (mainCategory: string) => {
     const cat = skillCategories.find((c) => c.name === mainCategory);
     return cat?.subcategories || [];
+  };
+
+  const renderSkillEditor = (skill: Skill, globalIndex: number) => {
+    const level = typeof skill.level === "number" ? skill.level : 75;
+    if (editingSkillIndex === globalIndex && editingSkillDraft) {
+      const draftSubs = getSubcategories(editingSkillDraft.mainCategory || "");
+      return (
+        <div key={globalIndex} className="w-full p-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <input type="text" value={editingSkillDraft.name} onChange={(e) => setEditingSkillDraft({ ...editingSkillDraft, name: e.target.value })} className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" placeholder="Skill name" />
+            <input type="text" value={editingSkillDraft.abbreviation || ""} onChange={(e) => setEditingSkillDraft({ ...editingSkillDraft, abbreviation: e.target.value })} className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" placeholder="Abbr (optional)" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <select value={editingSkillDraft.mainCategory || ""} onChange={(e) => setEditingSkillDraft({ ...editingSkillDraft, mainCategory: e.target.value, category: "" })} className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white">
+              <option value="">Main Category</option>
+              {skillCategories.map((cat) => (<option key={cat.name} value={cat.name}>{cat.name}</option>))}
+            </select>
+            <select value={editingSkillDraft.category} onChange={(e) => setEditingSkillDraft({ ...editingSkillDraft, category: e.target.value })} disabled={!editingSkillDraft.mainCategory} className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white disabled:opacity-50">
+              <option value="">Subcategory</option>
+              {draftSubs.map((sub) => (<option key={sub} value={sub}>{sub}</option>))}
+            </select>
+            <div className="flex items-center gap-2">
+              <input type="range" min={0} max={100} step={1} value={typeof editingSkillDraft.level === "number" ? editingSkillDraft.level : 75} onChange={(e) => setEditingSkillDraft({ ...editingSkillDraft, level: Number(e.target.value) })} className="w-full" />
+              <span className="text-xs text-zinc-500 w-10 text-right">{typeof editingSkillDraft.level === "number" ? editingSkillDraft.level : 75}%</span>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={cancelEditSkill} className="px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600 rounded-lg">Cancel</button>
+            <button onClick={saveEditSkill} disabled={!editingSkillDraft.name || !editingSkillDraft.mainCategory || !editingSkillDraft.category} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50">Save</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={globalIndex} className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
+        <span className="text-zinc-900 dark:text-white">{skill.name}</span>
+        {skill.abbreviation && <span className="text-xs text-zinc-500">[{skill.abbreviation}]</span>}
+        <span className="text-xs text-zinc-500">({skill.category || "none"})</span>
+        <input type="range" min={0} max={100} step={1} value={level} onChange={(e) => { const nextLevel = Number(e.target.value); setSkills((prev) => prev.map((s, i) => (i === globalIndex ? { ...s, level: nextLevel } : s))); }} className="w-20" />
+        <span className="text-xs text-zinc-500 w-8">{level}%</span>
+        <button onClick={() => startEditSkill(globalIndex)} className="text-blue-600 hover:text-blue-500 text-xs">Edit</button>
+        <button onClick={() => removeSkill(globalIndex)} className="text-red-500 hover:text-red-400">&times;</button>
+      </div>
+    );
   };
 
   const sanitizePhone = (value: string) => {
@@ -1459,6 +1533,7 @@ export function SettingsPageClient({
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Add Skill</p>
                 <div className="flex flex-wrap gap-2">
                   <input type="text" placeholder="Skill name" value={newSkill.name} onChange={(e) => setNewSkill({ ...newSkill, name: e.target.value })} className="flex-1 min-w-[150px] px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
+                  <input type="text" placeholder="Abbr (optional, e.g. Ps)" value={newSkill.abbreviation || ""} onChange={(e) => setNewSkill({ ...newSkill, abbreviation: e.target.value })} className="w-44 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white" />
                   <select value={newSkill.mainCategory} onChange={(e) => setNewSkill({ ...newSkill, mainCategory: e.target.value, category: "" })} className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white">
                     <option value="">Main Category</option>
                     {skillCategories.map((cat) => (<option key={cat.name} value={cat.name}>{cat.name}</option>))}
@@ -1484,17 +1559,9 @@ export function SettingsPageClient({
                     <div key={mainCat.name} className="mb-4">
                       <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">{mainCat.name}</p>
                       <div className="flex flex-wrap gap-2">
-                        {mainSkills.map((skill, index) => {
+                        {mainSkills.map((skill) => {
                           const globalIndex = skills.findIndex((s) => s === skill);
-                          return (
-                            <div key={index} className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
-                              <span className="text-zinc-900 dark:text-white">{skill.name}</span>
-                              <span className="text-xs text-zinc-500">({skill.category})</span>
-                              <input type="range" min={0} max={100} step={1} value={typeof skill.level === "number" ? skill.level : 75} onChange={(e) => { const level = Number(e.target.value); setSkills((prev) => prev.map((s, i) => (i === globalIndex ? { ...s, level } : s))); }} className="w-20" />
-                              <span className="text-xs text-zinc-500 w-8">{typeof skill.level === "number" ? skill.level : 75}%</span>
-                              <button onClick={() => removeSkill(globalIndex)} className="text-red-500 hover:text-red-400">&times;</button>
-                            </div>
-                          );
+                          return renderSkillEditor(skill, globalIndex);
                         })}
                       </div>
                     </div>
@@ -1504,17 +1571,9 @@ export function SettingsPageClient({
                   <div className="mb-4">
                     <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2">Uncategorized</p>
                     <div className="flex flex-wrap gap-2">
-                      {skills.filter((s) => !s.mainCategory).map((skill, index) => {
+                      {skills.filter((s) => !s.mainCategory).map((skill) => {
                         const globalIndex = skills.findIndex((s) => s === skill);
-                        return (
-                          <div key={index} className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
-                            <span className="text-zinc-900 dark:text-white">{skill.name}</span>
-                            <span className="text-xs text-zinc-500">({skill.category || "none"})</span>
-                            <input type="range" min={0} max={100} step={1} value={typeof skill.level === "number" ? skill.level : 75} onChange={(e) => { const level = Number(e.target.value); setSkills((prev) => prev.map((s, i) => (i === globalIndex ? { ...s, level } : s))); }} className="w-20" />
-                            <span className="text-xs text-zinc-500 w-8">{typeof skill.level === "number" ? skill.level : 75}%</span>
-                            <button onClick={() => removeSkill(globalIndex)} className="text-red-500 hover:text-red-400">&times;</button>
-                          </div>
-                        );
+                        return renderSkillEditor(skill, globalIndex);
                       })}
                     </div>
                   </div>
