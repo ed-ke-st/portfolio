@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { DesignWork } from "@/types/design";
 import { AppearanceSettings } from "@/lib/settings-api";
 import DesignCard from "./DesignCard";
-import Lightbox from "./Lightbox";
+import { buildDesignPathSegment } from "@/lib/designs";
 
 interface DesignSectionProps {
   designs: DesignWork[];
@@ -14,7 +13,6 @@ interface DesignSectionProps {
 }
 
 export default function DesignSection({ designs, appearance, username }: DesignSectionProps) {
-  const [selectedDesign, setSelectedDesign] = useState<DesignWork | null>(null);
   const sectionBg = appearance?.sections?.designs;
 
   // Show only first 4 designs on home page
@@ -45,7 +43,7 @@ export default function DesignSection({ designs, appearance, username }: DesignS
             <DesignCard
               key={design.id}
               design={design}
-              onClick={() => setSelectedDesign(design)}
+              href={`/${username}/designs/${buildDesignPathSegment(design)}`}
             />
           ))}
         </div>
@@ -64,12 +62,7 @@ export default function DesignSection({ designs, appearance, username }: DesignS
           </div>
         )}
 
-        {selectedDesign && (
-          <Lightbox
-            design={selectedDesign}
-            onClose={() => setSelectedDesign(null)}
-          />
-        )}
+       
       </div>
     </section>
   );

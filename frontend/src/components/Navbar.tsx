@@ -13,7 +13,7 @@ export default function Navbar({ username }: NavbarProps) {
   const basePath = username ? `/${username}` : "";
   const navLinks = [
     { href: `${basePath}#projects`, label: "Dev Projects" },
-    { href: `${basePath}#designs`, label: "Design Projects" },
+    { href: `${basePath}/designs`, label: "Design Projects" },
     { href: `${basePath}#skills`, label: "Skills" },
     { href: `${basePath}#contact`, label: "Contact" },
     ...(username ? [{ href: `${basePath}/cv`, label: "CV" }] : []),
