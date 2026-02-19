@@ -4,6 +4,7 @@ export interface Project {
   description: string;
   tech_stack: string[];
   image_url: string | null;
+  video_url: string | null;
   github_link: string | null;
   live_url: string | null;
   featured: boolean;

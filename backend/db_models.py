@@ -63,6 +63,7 @@ class Project(Base):
     description = Column(Text, nullable=False)
     tech_stack = Column(JSON, nullable=False)  # List of strings
     image_url = Column(String(500), nullable=True)
+    video_url = Column(String(500), nullable=True)
     github_link = Column(String(500), nullable=True)
     live_url = Column(String(500), nullable=True)
     featured = Column(Boolean, default=False)

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { listMediaAssets, MediaAsset } from "@/lib/admin-api";
+import { getVideoThumbnailUrl } from "@/lib/image";
 
 interface MediaLibraryModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface MediaLibraryModalProps {
   onSelect?: (asset: MediaAsset) => void;
   onSelectMany?: (assets: MediaAsset[]) => void;
   multiSelect?: boolean;
+  resourceType?: "image" | "video";
 }
 
 export default function MediaLibraryModal({
@@ -17,6 +19,7 @@ export default function MediaLibraryModal({
   onSelect,
   onSelectMany,
   multiSelect = false,
+  resourceType = "image",
 }: MediaLibraryModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,7 +32,7 @@ export default function MediaLibraryModal({
     setLoading(true);
     setError("");
     try {
-      const res = await listMediaAssets(opts?.cursor, opts?.search);
+      const res = await listMediaAssets(opts?.cursor, opts?.search, resourceType);
       setItems((prev) => (opts?.reset ? res.resources : [...prev, ...res.resources]));
       setNextCursor(res.next_cursor || null);
     } catch (err) {
@@ -46,7 +49,7 @@ export default function MediaLibraryModal({
     setSearch("");
     setSelectedIds({});
     loadAssets({ reset: true });
-  }, [isOpen]);
+  }, [isOpen, resourceType]);
 
   const toggleAsset = (asset: MediaAsset) => {
     if (!multiSelect) {
@@ -114,8 +117,21 @@ export default function MediaLibraryModal({
                     : "border-zinc-200 dark:border-zinc-700 hover:border-blue-500"
                 }`}
               >
-                <div className="aspect-square bg-zinc-100 dark:bg-zinc-900">
-                  <img src={asset.url} alt={asset.filename || asset.public_id} className="w-full h-full object-cover" />
+                <div className="aspect-square bg-zinc-100 dark:bg-zinc-900 relative">
+                  <img
+                    src={asset.resource_type === "video" ? getVideoThumbnailUrl(asset.url, 400) : asset.url}
+                    alt={asset.filename || asset.public_id}
+                    className="w-full h-full object-cover"
+                  />
+                  {asset.resource_type === "video" && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="p-2">
                   <p className="text-[11px] text-zinc-600 dark:text-zinc-300 truncate">{asset.filename || asset.public_id}</p>

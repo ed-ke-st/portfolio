@@ -65,6 +65,9 @@ def ensure_schema() -> None:
         columns = {col["name"] for col in inspector.get_columns("projects")}
         if "user_id" not in columns:
             _migrate_to_multi_tenant()
+        if "video_url" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN video_url VARCHAR(500)"))
 
     if "users" in table_names:
         columns = {col["name"] for col in inspector.get_columns("users")}
@@ -1059,6 +1062,7 @@ async def list_media(
     cursor: str | None = None,
     max_results: int = 30,
     search: str | None = None,
+    resource_type: str = "image",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1072,11 +1076,13 @@ async def list_media(
     _configure_cloudinary(cloudinary_url)
     folder_prefix = f"portfolio/{current_user.username}/"
     page_size = max(1, min(max_results, 100))
+    allowed_resource_types = {"image", "video"}
+    safe_resource_type = resource_type if resource_type in allowed_resource_types else "image"
 
     try:
         result = cloudinary.api.resources(
             type="upload",
-            resource_type="image",
+            resource_type=safe_resource_type,
             prefix=folder_prefix,
             max_results=page_size,
             next_cursor=cursor,

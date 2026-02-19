@@ -21,6 +21,7 @@ interface ProjectFormData {
   description: string;
   tech_stack: string;
   image_url: string;
+  video_url: string;
   github_link: string;
   live_url: string;
   featured: boolean;
@@ -32,6 +33,7 @@ const emptyForm: ProjectFormData = {
   description: "",
   tech_stack: "",
   image_url: "",
+  video_url: "",
   github_link: "",
   live_url: "",
   featured: false,
@@ -58,6 +60,8 @@ export default function ProjectsPage() {
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [integrationsModalMessage, setIntegrationsModalMessage] = useState("");
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+  const [showVideoLibrary, setShowVideoLibrary] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const fetchProjects = async () => {
     try {
@@ -80,6 +84,7 @@ export default function ProjectsPage() {
       description: project.description,
       tech_stack: project.tech_stack.join(", "),
       image_url: project.image_url || "",
+      video_url: project.video_url || "",
       github_link: project.github_link || "",
       live_url: project.live_url || "",
       featured: false,
@@ -109,6 +114,7 @@ export default function ProjectsPage() {
       description: form.description,
       tech_stack: form.tech_stack.split(",").map((s) => s.trim()).filter(Boolean),
       image_url: form.image_url || null,
+      video_url: form.video_url || null,
       github_link: form.github_link || null,
       live_url: form.live_url || null,
       featured: form.featured,
@@ -266,6 +272,34 @@ export default function ProjectsPage() {
     setShowMediaLibrary(false);
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const result = await uploadFile(file);
+      const videoUrl = result.url.startsWith("http")
+        ? result.url
+        : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
+      setForm((prev) => ({ ...prev, video_url: videoUrl }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to upload video";
+      if (message.toLowerCase().includes("integrations") || message.toLowerCase().includes("cloudinary")) {
+        setIntegrationsModalMessage(message);
+        setShowIntegrationsModal(true);
+      } else {
+        alert(message);
+      }
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleSelectVideoAsset = (asset: MediaAsset) => {
+    setForm((prev) => ({ ...prev, video_url: asset.url }));
+    setShowVideoLibrary(false);
+  };
+
   return (
     <div>
       <IntegrationsRequiredModal
@@ -278,6 +312,12 @@ export default function ProjectsPage() {
         isOpen={showMediaLibrary}
         onClose={() => setShowMediaLibrary(false)}
         onSelect={handleSelectMediaAsset}
+      />
+      <MediaLibraryModal
+        isOpen={showVideoLibrary}
+        onClose={() => setShowVideoLibrary(false)}
+        onSelect={handleSelectVideoAsset}
+        resourceType="video"
       />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Dev Projects</h1>
@@ -379,6 +419,47 @@ export default function ProjectsPage() {
                   >
                     Library
                   </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Video <span className="text-zinc-400 font-normal">(optional — adds a play button on the card)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.video_url}
+                    onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+                    placeholder="Cloudinary video URL or upload"
+                    className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                  <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white font-medium rounded-lg cursor-pointer transition-colors">
+                    {uploadingVideo ? "..." : "Upload"}
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowVideoLibrary(true)}
+                    className="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200 font-medium"
+                  >
+                    Library
+                  </button>
+                  {form.video_url && (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, video_url: "" })}
+                      className="px-3 py-2 text-zinc-400 hover:text-red-500 transition-colors"
+                      title="Remove video"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               </div>
 

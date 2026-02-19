@@ -72,3 +72,35 @@ export function getMediumUrl(url: string): string {
 export function getLargeUrl(url: string): string {
   return getOptimizedImageUrl(url, "large");
 }
+
+/**
+ * Get a JPEG poster image from a Cloudinary video URL.
+ * Cloudinary generates thumbnails by switching resource type and extension.
+ * Uses `so_0` to snapshot the first frame.
+ */
+export function getVideoThumbnailUrl(url: string, width = 800): string {
+  if (!url) return url;
+  const match = url.match(
+    /^(https?:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\/)(.*)/
+  );
+  if (!match) return url;
+  const [, baseUrl, rest] = match;
+  const withoutExt = rest.replace(/\.[^.]+$/, "");
+  const height = Math.round((width * 9) / 16);
+  // Keep /video/upload/ — Cloudinary serves a JPEG thumbnail when the extension is .jpg
+  return `${baseUrl}w_${width},h_${height},c_fill,q_auto,f_auto,so_0/${withoutExt}.jpg`;
+}
+
+/**
+ * Get an optimized streaming URL for a Cloudinary video.
+ * vc_auto selects the best codec per browser (WebM/H.265/H.264), q_auto adjusts quality.
+ */
+export function getOptimizedVideoUrl(url: string): string {
+  if (!url) return url;
+  const match = url.match(
+    /^(https?:\/\/res\.cloudinary\.com\/[^/]+\/video\/upload\/)(.*)/
+  );
+  if (!match) return url;
+  const [, baseUrl, rest] = match;
+  return `${baseUrl}vc_auto,q_auto/${rest}`;
+}

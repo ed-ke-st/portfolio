@@ -136,12 +136,13 @@ export interface MediaAssetListResponse {
   next_cursor?: string | null;
 }
 
-export async function listMediaAssets(cursor?: string, search?: string): Promise<MediaAssetListResponse> {
+export async function listMediaAssets(cursor?: string, search?: string, resourceType: "image" | "video" = "image"): Promise<MediaAssetListResponse> {
   const token = getToken();
   const params = new URLSearchParams();
   params.set("max_results", "30");
   if (cursor) params.set("cursor", cursor);
   if (search && search.trim()) params.set("search", search.trim());
+  params.set("resource_type", resourceType);
 
   const res = await fetch(`${API_BASE_URL}/api/admin/media?${params.toString()}`, {
     headers: {
