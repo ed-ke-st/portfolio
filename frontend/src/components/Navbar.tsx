@@ -10,11 +10,12 @@ interface NavbarProps {
 export default function Navbar({ basePath = "" }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  const homePath = basePath || "/";
   const navLinks = [
-    { href: `${basePath}#projects`, label: "Dev Projects" },
+    { href: `${homePath}#projects`, label: "Dev Projects" },
     { href: `${basePath}/designs`, label: "Design Projects" },
-    { href: `${basePath}#skills`, label: "Skills" },
-    { href: `${basePath}#contact`, label: "Contact" },
+    { href: `${homePath}#skills`, label: "Skills" },
+    { href: `${homePath}#contact`, label: "Contact" },
     { href: `${basePath}/cv`, label: "CV" },
   ];
 
@@ -22,7 +23,7 @@ export default function Navbar({ basePath = "" }: NavbarProps) {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--app-bg)] backdrop-blur-md border-b border-[var(--app-border)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href={basePath || "/"} className="text-xl font-bold text-[var(--app-text)]">
+          <Link href={homePath} className="text-xl font-bold text-[var(--app-text)]">
             Portfolio
           </Link>
 
