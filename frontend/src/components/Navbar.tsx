@@ -4,19 +4,18 @@ import Link from "next/link";
 import { useState } from "react";
 
 interface NavbarProps {
-  username?: string;
+  basePath?: string;
 }
 
-export default function Navbar({ username }: NavbarProps) {
+export default function Navbar({ basePath = "" }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const basePath = username ? `/${username}` : "";
   const navLinks = [
     { href: `${basePath}#projects`, label: "Dev Projects" },
     { href: `${basePath}/designs`, label: "Design Projects" },
     { href: `${basePath}#skills`, label: "Skills" },
     { href: `${basePath}#contact`, label: "Contact" },
-    ...(username ? [{ href: `${basePath}/cv`, label: "CV" }] : []),
+    { href: `${basePath}/cv`, label: "CV" },
   ];
 
   return (

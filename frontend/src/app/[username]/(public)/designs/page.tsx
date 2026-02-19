@@ -1,6 +1,7 @@
 import { getDesignsForUser } from "@/lib/designs";
 import { getSettingsForUser } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
+import { getSiteBasePath } from "@/lib/site-path";
 import DesignGallery from "@/components/DesignGallery";
 import Link from "next/link";
 import { DesignWork } from "@/types/design";
@@ -22,6 +23,8 @@ export default async function DesignsPage({
     console.error("Failed to fetch designs:", error);
   }
 
+  const basePath = await getSiteBasePath(username);
+
   return (
     <div
       className="min-h-screen pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-[var(--app-bg)]"
@@ -31,7 +34,7 @@ export default async function DesignsPage({
         {/* Header */}
         <div className="text-center mb-12">
           <Link
-            href={`/${username}`}
+            href={basePath || "/"}
             className="inline-flex items-center gap-1 text-sm text-[var(--app-muted)] hover:text-[var(--app-text)] mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

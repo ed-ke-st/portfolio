@@ -9,10 +9,10 @@ import { buildDesignPathSegment } from "@/lib/designs";
 interface DesignSectionProps {
   designs: DesignWork[];
   appearance?: AppearanceSettings;
-  username?: string;
+  basePath?: string;
 }
 
-export default function DesignSection({ designs, appearance, username }: DesignSectionProps) {
+export default function DesignSection({ designs, appearance, basePath = "" }: DesignSectionProps) {
   const sectionBg = appearance?.sections?.designs;
 
   // Show only first 4 designs on home page
@@ -43,7 +43,7 @@ export default function DesignSection({ designs, appearance, username }: DesignS
             <DesignCard
               key={design.id}
               design={design}
-              href={`/${username}/designs/${buildDesignPathSegment(design)}`}
+              href={`${basePath}/designs/${buildDesignPathSegment(design)}`}
             />
           ))}
         </div>
@@ -51,7 +51,7 @@ export default function DesignSection({ designs, appearance, username }: DesignS
         {designs.length > 4 && (
           <div className="text-center mt-8">
             <Link
-              href={username ? `/${username}/designs` : "/designs"}
+              href={`${basePath}/designs`}
               className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-[var(--app-text)] border border-[var(--app-border)] rounded-full hover:bg-[var(--app-card)] transition-colors"
             >
               View All Design Projects

@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getSettingsForUser, AllSettings } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
+import { getSiteBasePath } from "@/lib/site-path";
 
 export default async function PublicLayout({
   children,
@@ -20,6 +21,7 @@ export default async function PublicLayout({
   }
 
   const resolved = resolveAppearance(settings.appearance);
+  const basePath = await getSiteBasePath(username);
 
   return (
     <div
@@ -34,7 +36,7 @@ export default async function PublicLayout({
         ["--foreground" as string]: resolved.active.text,
       }}
     >
-      <Navbar username={username} />
+      <Navbar basePath={basePath} />
       <main>{children}</main>
       <Footer
         appearance={resolved.active}

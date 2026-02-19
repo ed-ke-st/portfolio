@@ -7,6 +7,7 @@ import { getProjectsForUser } from "@/lib/api";
 import { getDesignsForUser } from "@/lib/designs";
 import { getSettingsForUser, AllSettings, SkillCategory } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
+import { getSiteBasePath } from "@/lib/site-path";
 import { Project } from "@/types/project";
 import { DesignWork } from "@/types/design";
 
@@ -30,18 +31,19 @@ export default async function UserHome({
     console.error("Failed to fetch data:", error);
   }
   const resolved = resolveAppearance(settings.appearance);
+  const basePath = await getSiteBasePath(username);
 
   return (
     <>
       <Hero settings={settings.hero} appearance={resolved.active} />
       <Projects projects={projects} appearance={resolved.active} />
-      <DesignSection designs={designs} appearance={resolved.active} username={username} />
+      <DesignSection designs={designs} appearance={resolved.active} basePath={basePath} />
       <TechStack
         skills={settings.skills}
         skillCategories={settings.skill_categories as SkillCategory[] | undefined}
         appearance={resolved.active}
       />
-      <CVCard username={username} cv={settings.cv} appearance={resolved.active} />
+      <CVCard username={username} cv={settings.cv} appearance={resolved.active} basePath={basePath} />
     </>
   );
 }

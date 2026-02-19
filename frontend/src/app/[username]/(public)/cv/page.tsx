@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSettingsForUser, AllSettings, SkillCategory } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
+import { getSiteBasePath } from "@/lib/site-path";
 import { getProjectsForUser } from "@/lib/api";
 import { Project } from "@/types/project";
 
@@ -30,6 +31,7 @@ export default async function CVPage({
   }
 
   const resolved = resolveAppearance(settings.appearance);
+  const basePath = await getSiteBasePath(username);
   const cv = settings.cv;
   const heroName = settings.hero?.highlight || username;
   const contact = settings.contact;
@@ -60,7 +62,7 @@ export default async function CVPage({
           This CV is not published yet.
         </p>
         <Link
-          href={`/${username}`}
+          href={basePath || "/"}
           className="inline-flex mt-6 text-sm font-medium text-[var(--app-text)] underline"
         >
           Back to portfolio

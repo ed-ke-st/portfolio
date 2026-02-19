@@ -62,7 +62,10 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     // Rewrite / → /username, /designs → /username/designs, etc.
     url.pathname = `/${username}${pathname}`;
-    return NextResponse.rewrite(url);
+    // Inject header so server components know links should not include the username prefix
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-custom-domain", "true");
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   }
 
   // Unknown domain: pass through (will 404 naturally)

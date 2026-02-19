@@ -7,9 +7,10 @@ interface CVCardProps {
   username: string;
   cv?: CVSettings;
   appearance?: AppearanceSettings;
+  basePath?: string;
 }
 
-export default function CVCard({ username, cv, appearance }: CVCardProps) {
+export default function CVCard({ username, cv, appearance, basePath = "" }: CVCardProps) {
   if (!cv?.enabled) return null;
   if (cv.show_on_home === false) return null;
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -54,7 +55,7 @@ export default function CVCard({ username, cv, appearance }: CVCardProps) {
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
-              href={`/${username}/cv`}
+              href={`${basePath}/cv`}
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-full text-white font-medium"
               style={{ backgroundColor: cvPalette.accent }}
             >
