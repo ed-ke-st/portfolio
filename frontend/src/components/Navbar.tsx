@@ -5,9 +5,11 @@ import { useState } from "react";
 
 interface NavbarProps {
   basePath?: string;
+  brand?: string;
+  logoUrl?: string;
 }
 
-export default function Navbar({ basePath = "" }: NavbarProps) {
+export default function Navbar({ basePath = "", brand, logoUrl }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const homePath = basePath || "/";
@@ -24,7 +26,12 @@ export default function Navbar({ basePath = "" }: NavbarProps) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href={homePath} className="text-xl font-bold text-[var(--app-text)]">
-            Portfolio
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={brand || "Portfolio"} className="h-8 w-auto" />
+            ) : (
+              brand || "Portfolio"
+            )}
           </Link>
 
           {/* Desktop Menu */}

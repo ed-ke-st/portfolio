@@ -57,6 +57,8 @@ export function SettingsPageClient({
 
   const [uploadingHeroBg, setUploadingHeroBg] = useState(false);
   const [uploadingCvPdf, setUploadingCvPdf] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   // Preview state
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
@@ -78,7 +80,7 @@ export function SettingsPageClient({
   } | null>(null);
   const [platformHero, setPlatformHero] = useState<PlatformHeroSettings>(defaultPlatformHero);
   const [uploadingPlatformHeroBg, setUploadingPlatformHeroBg] = useState(false);
-  const [mediaLibraryTarget, setMediaLibraryTarget] = useState<"hero_bg" | "cv_photo" | "platform_hero_bg" | null>(null);
+  const [mediaLibraryTarget, setMediaLibraryTarget] = useState<"hero_bg" | "cv_photo" | "platform_hero_bg" | "logo" | "favicon" | null>(null);
   const isApexDomain = domainValue && !domainValue.includes(".")
     ? false
     : Boolean(domainValue && domainValue.split(".").length === 2);
@@ -509,6 +511,10 @@ export function SettingsPageClient({
       setCv((prev) => ({ ...prev, photo_url: asset.url }));
     } else if (mediaLibraryTarget === "platform_hero_bg") {
       setPlatformHero((prev) => ({ ...prev, background_image: asset.url }));
+    } else if (mediaLibraryTarget === "logo") {
+      setAppearance((prev) => ({ ...prev, logo_url: asset.url }));
+    } else if (mediaLibraryTarget === "favicon") {
+      setAppearance((prev) => ({ ...prev, favicon_url: asset.url }));
     }
     setMediaLibraryTarget(null);
   };
@@ -678,6 +684,94 @@ export function SettingsPageClient({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Settings Panel */}
             <div className="space-y-4">
+              {/* Brand & Favicon */}
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">Brand & Favicon</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Navbar label</label>
+                    <input
+                      type="text"
+                      value={appearance.navbar_brand || ""}
+                      onChange={(e) => setAppearance({ ...appearance, navbar_brand: e.target.value })}
+                      placeholder="Portfolio"
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Logo — replaces label when set (SVG or image)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={appearance.logo_url || ""}
+                        onChange={(e) => setAppearance({ ...appearance, logo_url: e.target.value })}
+                        placeholder="Image or SVG URL"
+                        className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
+                      <label className="px-3 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
+                        {uploadingLogo ? "..." : "Upload"}
+                        <input type="file" accept="image/*,.svg" className="hidden" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingLogo(true);
+                          try {
+                            const result = await uploadFile(file);
+                            const url = result.url.startsWith("http") ? result.url : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
+                            setAppearance((prev) => ({ ...prev, logo_url: url }));
+                          } catch { } finally { setUploadingLogo(false); }
+                        }} />
+                      </label>
+                      <button type="button" onClick={() => setMediaLibraryTarget("logo")} className="px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200">Library</button>
+                      {appearance.logo_url && (
+                        <button type="button" onClick={() => setAppearance({ ...appearance, logo_url: "" })} className="px-2 text-zinc-400 hover:text-red-500 transition-colors">✕</button>
+                      )}
+                    </div>
+                    {appearance.logo_url && (
+                      <div className="mt-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 inline-flex">
+                        <img src={appearance.logo_url} alt="Logo preview" className="h-8 w-auto" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Favicon (browser tab icon — .ico, .png, or .svg)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={appearance.favicon_url || ""}
+                        onChange={(e) => setAppearance({ ...appearance, favicon_url: e.target.value })}
+                        placeholder="Image URL"
+                        className="flex-1 px-3 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
+                      <label className="px-3 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
+                        {uploadingFavicon ? "..." : "Upload"}
+                        <input type="file" accept="image/*,.ico,.svg" className="hidden" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingFavicon(true);
+                          try {
+                            const result = await uploadFile(file);
+                            const url = result.url.startsWith("http") ? result.url : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
+                            setAppearance((prev) => ({ ...prev, favicon_url: url }));
+                          } catch { } finally { setUploadingFavicon(false); }
+                        }} />
+                      </label>
+                      {appearance.favicon_url && (
+                        <button type="button" onClick={() => setAppearance({ ...appearance, favicon_url: "" })} className="px-2 text-zinc-400 hover:text-red-500 transition-colors">✕</button>
+                      )}
+                    </div>
+                    {appearance.favicon_url && (
+                      <div className="mt-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 inline-flex items-center gap-2">
+                        <img src={appearance.favicon_url} alt="Favicon preview" className="w-6 h-6 object-contain" />
+                        <span className="text-xs text-zinc-500">Preview</span>
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={() => handleSave("appearance", appearance)} disabled={saving} className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+                    {saving ? "Saving..." : "Save Brand & Favicon"}
+                  </button>
+                </div>
+              </div>
+
               {/* Global Colors */}
               <div className="bg-white dark:bg-zinc-800 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700">
                 <div className="flex items-center justify-between mb-3">

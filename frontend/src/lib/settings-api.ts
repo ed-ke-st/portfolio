@@ -122,6 +122,9 @@ export interface AppearanceSettings {
   muted: string;
   card: string;
   border: string;
+  navbar_brand?: string;
+  logo_url?: string;
+  favicon_url?: string;
   sections?: {
     hero?: string;
     projects?: string;
