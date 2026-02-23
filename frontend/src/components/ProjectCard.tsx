@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { Project } from "@/types/project";
 import { getVideoThumbnailUrl } from "@/lib/image";
+import { buildProjectPathSegment } from "@/lib/projects";
 import Link from "next/link";
 import VideoOverlay from "./VideoOverlay";
 
 interface ProjectCardProps {
   project: Project;
+  basePath?: string;
 }
 
-export default function ProjectCard({ project }: ProjectCardProps) {
+export default function ProjectCard({ project, basePath = "" }: ProjectCardProps) {
   const [showVideo, setShowVideo] = useState(false);
 
   const coverUrl = project.image_url
@@ -18,6 +20,8 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     : project.video_url
     ? getVideoThumbnailUrl(project.video_url)
     : null;
+
+  const detailHref = `${basePath}/projects/${buildProjectPathSegment(project)}`;
 
   return (
     <>
@@ -28,42 +32,46 @@ export default function ProjectCard({ project }: ProjectCardProps) {
       <div className="group relative bg-[var(--app-card)] rounded-xl border border-[var(--app-border)] overflow-hidden hover:border-[var(--app-accent)] transition-all duration-300 hover:shadow-lg">
         {/* Project Image / Video Cover */}
         <div className="aspect-video bg-[var(--app-bg)] flex items-center justify-center overflow-hidden relative">
-          {coverUrl ? (
-            <img
-              src={coverUrl}
-              alt={project.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-[var(--app-muted)] text-sm">
-              Project Preview
-            </span>
-          )}
-
-          {/* Play button overlay — only shown when a video is set */}
-          {project.video_url && (
+          {project.video_url ? (
+            /* Video — play button opens overlay, does NOT navigate */
             <button
               onClick={() => setShowVideo(true)}
               aria-label="Play video"
-              className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-colors"
+              className="absolute inset-0 w-full h-full"
             >
-              <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-                <svg
-                  className="w-6 h-6 text-zinc-900 ml-1"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
+              {coverUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coverUrl} alt={project.title} className="w-full h-full object-cover" />
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/35 transition-colors">
+                <span className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                  <svg className="w-6 h-6 text-zinc-900 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
+              </span>
             </button>
+          ) : (
+            /* Image or placeholder — links to detail page */
+            <Link href={detailHref} className="absolute inset-0 w-full h-full">
+              {coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coverUrl} alt={project.title} className="w-full h-full object-cover" />
+              ) : (
+                <span className="flex items-center justify-center w-full h-full text-[var(--app-muted)] text-sm">
+                  Project Preview
+                </span>
+              )}
+            </Link>
           )}
         </div>
 
         <div className="p-6">
-          <h3 className="text-xl font-semibold text-[var(--app-text)] group-hover:text-[var(--app-accent)] transition-colors">
-            {project.title}
-          </h3>
+          <Link href={detailHref}>
+            <h3 className="text-xl font-semibold text-[var(--app-text)] group-hover:text-[var(--app-accent)] transition-colors">
+              {project.title}
+            </h3>
+          </Link>
 
           <p className="mt-2 text-[var(--app-muted)] text-sm line-clamp-2">
             {project.description}

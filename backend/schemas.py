@@ -39,6 +39,7 @@ class ProjectBase(BaseModel):
     tech_stack: list[str]
     image_url: str | None = None
     video_url: str | None = None
+    gallery: list[dict] | None = None
     github_link: str | None = None
     live_url: str | None = None
     featured: bool = False
@@ -55,6 +56,7 @@ class ProjectUpdate(BaseModel):
     tech_stack: list[str] | None = None
     image_url: str | None = None
     video_url: str | None = None
+    gallery: list[dict] | None = None
     github_link: str | None = None
     live_url: str | None = None
     featured: bool | None = None

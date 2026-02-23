@@ -11,7 +11,7 @@ import {
   captureProjectScreenshot,
   MediaAsset,
 } from "@/lib/admin-api";
-import { Project } from "@/types/project";
+import { Project, ProjectGalleryItem } from "@/types/project";
 import Cropper, { Area } from "react-easy-crop";
 import IntegrationsRequiredModal from "@/components/IntegrationsRequiredModal";
 import MediaLibraryModal from "@/components/MediaLibraryModal";
@@ -62,6 +62,9 @@ export default function ProjectsPage() {
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showVideoLibrary, setShowVideoLibrary] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [galleryItems, setGalleryItems] = useState<ProjectGalleryItem[]>([]);
+  const [uploadingGalleryIndex, setUploadingGalleryIndex] = useState<number | null>(null);
+  const [galleryLibraryIndex, setGalleryLibraryIndex] = useState<number | null>(null);
 
   const fetchProjects = async () => {
     try {
@@ -90,6 +93,7 @@ export default function ProjectsPage() {
       featured: false,
       order: 0,
     });
+    setGalleryItems(project.gallery || []);
     setEditingId(project.id);
     setShowForm(true);
   };
@@ -115,6 +119,7 @@ export default function ProjectsPage() {
       tech_stack: form.tech_stack.split(",").map((s) => s.trim()).filter(Boolean),
       image_url: form.image_url || null,
       video_url: form.video_url || null,
+      gallery: galleryItems.length > 0 ? galleryItems : null,
       github_link: form.github_link || null,
       live_url: form.live_url || null,
       featured: form.featured,
@@ -131,6 +136,7 @@ export default function ProjectsPage() {
       setShowForm(false);
       setEditingId(null);
       setForm(emptyForm);
+      setGalleryItems([]);
       cleanupScreenshot();
     } catch (error) {
       console.error("Failed to save project:", error);
@@ -319,12 +325,27 @@ export default function ProjectsPage() {
         onSelect={handleSelectVideoAsset}
         resourceType="video"
       />
+      <MediaLibraryModal
+        isOpen={galleryLibraryIndex !== null}
+        onClose={() => setGalleryLibraryIndex(null)}
+        onSelect={(asset) => {
+          if (galleryLibraryIndex === null) return;
+          setGalleryItems((prev) => {
+            const next = [...prev];
+            next[galleryLibraryIndex] = { ...next[galleryLibraryIndex], url: asset.url };
+            return next;
+          });
+          setGalleryLibraryIndex(null);
+        }}
+        resourceType={galleryLibraryIndex !== null && galleryItems[galleryLibraryIndex]?.type === "video" ? "video" : "image"}
+      />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Dev Projects</h1>
         <button
           onClick={() => {
             setForm(emptyForm);
             setEditingId(null);
+            setGalleryItems([]);
             setShowForm(true);
           }}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
@@ -463,6 +484,73 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
+              {/* Gallery */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Gallery <span className="text-zinc-400 font-normal">(shown on the project detail page)</span>
+                </label>
+                <div className="space-y-3">
+                  {galleryItems.map((item, index) => (
+                    <div key={index} className="border border-zinc-200 dark:border-zinc-600 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${item.type === "video" ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300" : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"}`}>
+                          {item.type === "video" ? "Video" : "Image"}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button type="button" disabled={index === 0} onClick={() => setGalleryItems((prev) => { const n = [...prev]; [n[index - 1], n[index]] = [n[index], n[index - 1]]; return n; })} className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-30">↑</button>
+                          <button type="button" disabled={index === galleryItems.length - 1} onClick={() => setGalleryItems((prev) => { const n = [...prev]; [n[index + 1], n[index]] = [n[index], n[index + 1]]; return n; })} className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-30">↓</button>
+                          <button type="button" onClick={() => setGalleryItems((prev) => prev.filter((_, i) => i !== index))} className="p-1 text-zinc-400 hover:text-red-500 transition-colors">✕</button>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item.url}
+                          onChange={(e) => setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], url: e.target.value }; return n; })}
+                          placeholder={item.type === "video" ? "Video URL" : "Image URL"}
+                          className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                        />
+                        <label className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
+                          {uploadingGalleryIndex === index ? "..." : "Upload"}
+                          <input type="file" accept={item.type === "video" ? "video/*" : "image/*"} className="hidden" onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingGalleryIndex(index);
+                            try {
+                              const result = await uploadFile(file);
+                              const url = result.url.startsWith("http") ? result.url : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
+                              setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], url }; return n; });
+                            } catch (err) {
+                              const message = err instanceof Error ? err.message : "Upload failed";
+                              if (message.toLowerCase().includes("cloudinary")) { setIntegrationsModalMessage(message); setShowIntegrationsModal(true); } else { alert(message); }
+                            } finally { setUploadingGalleryIndex(null); }
+                          }} />
+                        </label>
+                        <button type="button" onClick={() => setGalleryLibraryIndex(index)} className="px-3 py-1.5 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200">Library</button>
+                      </div>
+                      <input
+                        type="text"
+                        value={item.caption || ""}
+                        onChange={(e) => setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], caption: e.target.value }; return n; })}
+                        placeholder="Caption (optional)"
+                        className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                      />
+                      {item.url && item.type === "image" && (
+                        <img src={item.url} alt="preview" className="h-20 w-auto rounded object-cover border border-zinc-200 dark:border-zinc-600" />
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setGalleryItems((prev) => [...prev, { type: "image", url: "", caption: "" }])} className="flex-1 py-2 text-sm border border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 hover:border-blue-400 hover:text-blue-500 transition-colors">
+                      + Add Image
+                    </button>
+                    <button type="button" onClick={() => setGalleryItems((prev) => [...prev, { type: "video", url: "", caption: "" }])} className="flex-1 py-2 text-sm border border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 hover:border-purple-400 hover:text-purple-500 transition-colors">
+                      + Add Video
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
@@ -495,6 +583,7 @@ export default function ProjectsPage() {
                   onClick={() => {
                     setShowForm(false);
                     setEditingId(null);
+                    setGalleryItems([]);
                     cleanupScreenshot();
                   }}
                   className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white font-medium"

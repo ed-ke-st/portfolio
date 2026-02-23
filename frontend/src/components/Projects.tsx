@@ -5,9 +5,10 @@ import ProjectCard from "./ProjectCard";
 interface ProjectsProps {
   projects: Project[];
   appearance?: AppearanceSettings;
+  basePath?: string;
 }
 
-export default function Projects({ projects, appearance }: ProjectsProps) {
+export default function Projects({ projects, appearance, basePath }: ProjectsProps) {
   const sectionBg = appearance?.sections?.projects;
   return (
     <section
@@ -27,7 +28,7 @@ export default function Projects({ projects, appearance }: ProjectsProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard key={project.id} project={project} basePath={basePath} />
           ))}
         </div>
       </div>

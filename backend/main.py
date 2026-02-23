@@ -68,6 +68,9 @@ def ensure_schema() -> None:
         if "video_url" not in columns:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN video_url VARCHAR(500)"))
+        if "gallery" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN gallery JSON"))
 
     if "users" in table_names:
         columns = {col["name"] for col in inspector.get_columns("users")}

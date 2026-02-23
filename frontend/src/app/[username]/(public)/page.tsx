@@ -36,7 +36,7 @@ export default async function UserHome({
   return (
     <>
       <Hero settings={settings.hero} appearance={resolved.active} />
-      <Projects projects={projects} appearance={resolved.active} />
+      <Projects projects={projects} appearance={resolved.active} basePath={basePath} />
       <DesignSection designs={designs} appearance={resolved.active} basePath={basePath} />
       <TechStack
         skills={settings.skills}
