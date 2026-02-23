@@ -272,6 +272,27 @@ export default async function CVPage({
             </section>
           )}
 
+          {cv.languages?.length > 0 && (
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Languages</h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {cv.languages.map((item, index) => (
+                  <div key={item.id || `${item.language}-${index}`} className="rounded-lg border p-4" style={{ borderColor: cvPalette.border }}>
+                    <p className="font-medium">{item.language}</p>
+                    <div className="mt-2 space-y-1 text-sm" style={{ color: cvPalette.muted }}>
+                      {item.spoken && (
+                        <p><span className="font-medium">Spoken</span> — {item.spoken}</p>
+                      )}
+                      {item.written && (
+                        <p><span className="font-medium">Written</span> — {item.written}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {projects.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4">Selected Projects</h2>

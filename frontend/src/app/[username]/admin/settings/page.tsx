@@ -15,6 +15,7 @@ import {
   CVEducation,
   CVCertification,
   CVAward,
+  CVLanguage,
   FooterSettings,
   AppearanceSettings,
   IntegrationsSettings,
@@ -139,6 +140,7 @@ export function SettingsPageClient({
     education: [],
     certifications: [],
     awards: [],
+    languages: [],
   });
 
   const [footer, setFooter] = useState<FooterSettings>({
@@ -286,6 +288,10 @@ export function SettingsPageClient({
               ...item,
             })),
             awards: (cvData.awards || []).map((item: CVAward) => ({
+              id: item.id || createItemId(),
+              ...item,
+            })),
+            languages: (cvData.languages || []).map((item: CVLanguage) => ({
               id: item.id || createItemId(),
               ...item,
             })),
@@ -516,6 +522,7 @@ export function SettingsPageClient({
     education: current.education.map((item) => ({ ...item })),
     certifications: current.certifications.map((item) => ({ ...item })),
     awards: current.awards.map((item) => ({ ...item })),
+    languages: (current.languages || []).map((item) => ({ ...item })),
   });
 
   const tabs = [
@@ -1468,6 +1475,73 @@ export function SettingsPageClient({
                       </div>
                       <button
                         onClick={() => setCv({ ...cv, awards: cv.awards.filter((_, i) => i !== index) })}
+                        className="text-xs text-red-500 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 border border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Languages</p>
+                  <button
+                    onClick={() =>
+                      setCv({
+                        ...cv,
+                        languages: [
+                          ...(cv.languages || []),
+                          { id: createItemId(), language: "", spoken: "", written: "" } as CVLanguage,
+                        ],
+                      })
+                    }
+                    className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {(cv.languages || []).map((item, index) => (
+                    <div key={item.id || `lang-${index}`} className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-zinc-500 mb-1">Language</label>
+                          <input
+                            type="text"
+                            value={item.language}
+                            onChange={(e) => {
+                              const updated = [...(cv.languages || [])];
+                              updated[index] = { ...updated[index], language: e.target.value };
+                              setCv({ ...cv, languages: updated });
+                            }}
+                            placeholder="e.g. English"
+                            className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                          />
+                        </div>
+                        {(["spoken", "written"] as const).map((field) => (
+                          <div key={field}>
+                            <label className="block text-xs text-zinc-500 mb-1 capitalize">{field}</label>
+                            <select
+                              value={item[field] || ""}
+                              onChange={(e) => {
+                                const updated = [...(cv.languages || [])];
+                                updated[index] = { ...updated[index], [field]: e.target.value };
+                                setCv({ ...cv, languages: updated });
+                              }}
+                              className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                            >
+                              <option value="">— not set —</option>
+                              {["Native", "Fluent", "Advanced", "Intermediate", "Basic"].map((level) => (
+                                <option key={level} value={level}>{level}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setCv({ ...cv, languages: (cv.languages || []).filter((_, i) => i !== index) })}
                         className="text-xs text-red-500 hover:text-red-400"
                       >
                         Remove

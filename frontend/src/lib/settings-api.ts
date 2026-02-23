@@ -78,6 +78,13 @@ export interface CVAward {
   description?: string;
 }
 
+export interface CVLanguage {
+  id?: string;
+  language: string;
+  spoken?: string;
+  written?: string;
+}
+
 export interface CVSettings {
   enabled: boolean;
   show_on_home?: boolean;
@@ -101,6 +108,7 @@ export interface CVSettings {
   education: CVEducation[];
   certifications: CVCertification[];
   awards: CVAward[];
+  languages: CVLanguage[];
 }
 
 export interface FooterSettings {
