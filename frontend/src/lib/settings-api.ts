@@ -124,6 +124,7 @@ export interface AppearanceSettings {
   border: string;
   navbar_brand?: string;
   logo_url?: string;
+  logo_show_brand?: boolean;
   favicon_url?: string;
   sections?: {
     hero?: string;

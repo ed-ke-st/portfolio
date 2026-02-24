@@ -85,6 +85,7 @@ class DesignWork(Base):
     category = Column(String(50), nullable=False)  # logo, branding, ui, print
     images = Column(JSON, nullable=False)  # List of image URLs
     primary_image = Column(Integer, default=0)  # Index of primary/thumbnail image
+    videos = Column(JSON, nullable=True)  # List of video URLs
     client = Column(String(200), nullable=True)
     year = Column(Integer, nullable=True)
     featured = Column(Boolean, default=False)

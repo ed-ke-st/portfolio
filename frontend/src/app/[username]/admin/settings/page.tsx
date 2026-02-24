@@ -699,7 +699,7 @@ export function SettingsPageClient({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-zinc-500 mb-1">Logo — replaces label when set (SVG or image)</label>
+                    <label className="block text-xs text-zinc-500 mb-1">Logo (SVG or image)</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -727,8 +727,19 @@ export function SettingsPageClient({
                       )}
                     </div>
                     {appearance.logo_url && (
-                      <div className="mt-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 inline-flex">
-                        <img src={appearance.logo_url} alt="Logo preview" className="h-8 w-auto" />
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 inline-flex">
+                          <img src={appearance.logo_url} alt="Logo preview" className="h-8 w-auto" />
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!appearance.logo_show_brand}
+                            onChange={(e) => setAppearance({ ...appearance, logo_show_brand: e.target.checked })}
+                            className="w-4 h-4 rounded accent-purple-600"
+                          />
+                          <span className="text-xs text-zinc-500">Show label next to logo</span>
+                        </label>
                       </div>
                     )}
                   </div>

@@ -48,7 +48,7 @@ def ensure_schema() -> None:
     inspector = inspect(engine)
     table_names = inspector.get_table_names()
 
-    # Migration: add primary_image to design_works
+    # Migration: add primary_image and videos to design_works
     if "design_works" in table_names:
         columns = {col["name"] for col in inspector.get_columns("design_works")}
         if "primary_image" not in columns:
@@ -59,6 +59,9 @@ def ensure_schema() -> None:
                         "ADD COLUMN primary_image INTEGER DEFAULT 0"
                     )
                 )
+        if "videos" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE design_works ADD COLUMN videos JSON"))
 
     # Migration: add multi-tenant columns
     if "projects" in table_names:
@@ -1022,9 +1025,13 @@ async def delete_design(
 @app.post("/api/admin/upload")
 async def upload_file(
     file: UploadFile = File(...),
+    resource_type: str = "auto",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    allowed_resource_types = {"auto", "image", "video", "raw"}
+    safe_resource_type = resource_type if resource_type in allowed_resource_types else "auto"
+
     try:
         content = await file.read()
 
@@ -1034,7 +1041,7 @@ async def upload_file(
             result = cloudinary.uploader.upload(
                 content,
                 folder=f"portfolio/{current_user.username}",
-                resource_type="auto"
+                resource_type=safe_resource_type
             )
             return {
                 "filename": result["public_id"],

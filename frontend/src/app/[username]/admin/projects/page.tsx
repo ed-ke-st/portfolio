@@ -493,15 +493,50 @@ export default function ProjectsPage() {
                   {galleryItems.map((item, index) => (
                     <div key={index} className="border border-zinc-200 dark:border-zinc-600 rounded-lg p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${item.type === "video" ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300" : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"}`}>
-                          {item.type === "video" ? "Video" : "Image"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${item.type === "video" ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300" : item.type === "model" ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300" : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"}`}>
+                            {item.type === "video" ? "Video" : item.type === "model" ? "3D Model" : "Image"}
+                          </span>
+                          {item.type !== "model" && <>
+                            <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden text-xs font-medium">
+                              <button
+                                type="button"
+                                onClick={() => setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], layout: "full" }; return n; })}
+                                className={`px-2 py-0.5 transition-colors ${(!item.layout || item.layout === "full") ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
+                                title="Full width"
+                              >1 col</button>
+                              <button
+                                type="button"
+                                onClick={() => setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], layout: "side" }; return n; })}
+                                className={`px-2 py-0.5 transition-colors ${item.layout === "side" ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
+                                title="Image + caption side by side"
+                              >2 col</button>
+                            </div>
+                            <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden text-xs font-medium">
+                              <button
+                                type="button"
+                                onClick={() => setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], background: item.background === false ? true : false }; return n; })}
+                                className={`px-2 py-0.5 transition-colors ${item.background !== false ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
+                                title="Toggle border / background"
+                              >bg</button>
+                            </div>
+                            <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-600 overflow-hidden text-xs font-medium">
+                              <button
+                                type="button"
+                                onClick={() => setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], rounded: item.rounded === false ? true : false }; return n; })}
+                                className={`px-2 py-0.5 transition-colors ${item.rounded !== false ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}
+                                title="Toggle rounded corners"
+                              >rnd</button>
+                            </div>
+                          </>}
+                        </div>
                         <div className="flex items-center gap-1">
                           <button type="button" disabled={index === 0} onClick={() => setGalleryItems((prev) => { const n = [...prev]; [n[index - 1], n[index]] = [n[index], n[index - 1]]; return n; })} className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-30">↑</button>
                           <button type="button" disabled={index === galleryItems.length - 1} onClick={() => setGalleryItems((prev) => { const n = [...prev]; [n[index + 1], n[index]] = [n[index], n[index + 1]]; return n; })} className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-30">↓</button>
                           <button type="button" onClick={() => setGalleryItems((prev) => prev.filter((_, i) => i !== index))} className="p-1 text-zinc-400 hover:text-red-500 transition-colors">✕</button>
                         </div>
                       </div>
+
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -512,12 +547,13 @@ export default function ProjectsPage() {
                         />
                         <label className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white text-sm font-medium rounded-lg cursor-pointer transition-colors">
                           {uploadingGalleryIndex === index ? "..." : "Upload"}
-                          <input type="file" accept={item.type === "video" ? "video/*" : "image/*"} className="hidden" onChange={async (e) => {
+                          <input type="file" accept={item.type === "video" ? "video/*" : item.type === "model" ? ".glb,.gltf" : "image/*"} className="hidden" onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
                             setUploadingGalleryIndex(index);
                             try {
-                              const result = await uploadFile(file);
+                              const resourceType = item.type === "model" ? "raw" : item.type === "video" ? "video" : "image";
+                              const result = await uploadFile(file, resourceType);
                               const url = result.url.startsWith("http") ? result.url : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
                               setGalleryItems((prev) => { const n = [...prev]; n[index] = { ...n[index], url }; return n; });
                             } catch (err) {
@@ -526,7 +562,7 @@ export default function ProjectsPage() {
                             } finally { setUploadingGalleryIndex(null); }
                           }} />
                         </label>
-                        <button type="button" onClick={() => setGalleryLibraryIndex(index)} className="px-3 py-1.5 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200">Library</button>
+                        {item.type !== "model" && <button type="button" onClick={() => setGalleryLibraryIndex(index)} className="px-3 py-1.5 text-sm border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200">Library</button>}
                       </div>
                       <input
                         type="text"
@@ -536,7 +572,11 @@ export default function ProjectsPage() {
                         className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                       />
                       {item.url && item.type === "image" && (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={item.url} alt="preview" className="h-20 w-auto rounded object-cover border border-zinc-200 dark:border-zinc-600" />
+                      )}
+                      {item.url && item.type === "model" && (
+                        <p className="text-xs text-zinc-400 truncate">{item.url.split("/").pop()}</p>
                       )}
                     </div>
                   ))}
@@ -546,6 +586,9 @@ export default function ProjectsPage() {
                     </button>
                     <button type="button" onClick={() => setGalleryItems((prev) => [...prev, { type: "video", url: "", caption: "" }])} className="flex-1 py-2 text-sm border border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 hover:border-purple-400 hover:text-purple-500 transition-colors">
                       + Add Video
+                    </button>
+                    <button type="button" onClick={() => setGalleryItems((prev) => [...prev, { type: "model", url: "", caption: "" }])} className="flex-1 py-2 text-sm border border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-500 hover:border-emerald-400 hover:text-emerald-500 transition-colors">
+                      + Add 3D Model
                     </button>
                   </div>
                 </div>

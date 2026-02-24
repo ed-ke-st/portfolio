@@ -1,7 +1,10 @@
 export interface ProjectGalleryItem {
-  type: "image" | "video";
+  type: "image" | "video" | "model";
   url: string;
   caption?: string;
+  layout?: "full" | "side";
+  background?: boolean;
+  rounded?: boolean;
 }
 
 export interface Project {

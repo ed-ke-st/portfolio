@@ -79,6 +79,7 @@ class DesignWorkBase(BaseModel):
     category: str
     images: list[str]
     primary_image: int = 0
+    videos: list[str] | None = None
     client: str | None = None
     year: int | None = None
     featured: bool = False
@@ -95,6 +96,7 @@ class DesignWorkUpdate(BaseModel):
     category: str | None = None
     images: list[str] | None = None
     primary_image: int | None = None
+    videos: list[str] | None = None
     client: str | None = None
     year: int | None = None
     featured: bool | None = None

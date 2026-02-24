@@ -26,6 +26,7 @@ interface DesignFormData {
   category: string;
   images: string[];
   primary_image: number;
+  videos: string[];
   client: string;
   year: string;
   featured: boolean;
@@ -38,6 +39,7 @@ const emptyForm: DesignFormData = {
   category: "logo",
   images: [],
   primary_image: 0,
+  videos: [],
   client: "",
   year: new Date().getFullYear().toString(),
   featured: false,
@@ -67,6 +69,8 @@ export default function DesignsPage() {
   const [integrationsModalMessage, setIntegrationsModalMessage] = useState("");
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [draggingImageIndex, setDraggingImageIndex] = useState<number | null>(null);
+  const [showVideoLibrary, setShowVideoLibrary] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const fetchDesigns = async () => {
     try {
@@ -90,6 +94,7 @@ export default function DesignsPage() {
       category: design.category,
       images: design.images,
       primary_image: design.primary_image || 0,
+      videos: design.videos || [],
       client: design.client || "",
       year: design.year?.toString() || "",
       featured: design.featured,
@@ -120,6 +125,7 @@ export default function DesignsPage() {
       category: form.category,
       images: form.images,
       primary_image: form.primary_image,
+      videos: form.videos.length > 0 ? form.videos : null,
       client: form.client || null,
       year: form.year ? parseInt(form.year) : null,
       featured: form.featured,
@@ -309,6 +315,37 @@ export default function DesignsPage() {
     setShowMediaLibrary(false);
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const result = await uploadFile(file);
+      const url = result.url.startsWith("http")
+        ? result.url
+        : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}${result.url}`;
+      setForm((prev) => ({ ...prev, videos: [...prev.videos, url] }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to upload video";
+      if (message.toLowerCase().includes("integrations") || message.toLowerCase().includes("cloudinary")) {
+        setIntegrationsModalMessage(message);
+        setShowIntegrationsModal(true);
+      } else {
+        alert(message);
+      }
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleSelectVideoAsset = (asset: MediaAsset) => {
+    setForm((prev) => {
+      if (prev.videos.includes(asset.url)) return prev;
+      return { ...prev, videos: [...prev.videos, asset.url] };
+    });
+    setShowVideoLibrary(false);
+  };
+
   return (
     <div>
       <IntegrationsRequiredModal
@@ -323,6 +360,12 @@ export default function DesignsPage() {
         onSelect={handleSelectMediaAsset}
         onSelectMany={handleSelectManyMediaAssets}
         multiSelect
+      />
+      <MediaLibraryModal
+        isOpen={showVideoLibrary}
+        onClose={() => setShowVideoLibrary(false)}
+        onSelect={handleSelectVideoAsset}
+        resourceType="video"
       />
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Design Projects</h1>
@@ -576,6 +619,43 @@ export default function DesignsPage() {
                 </div>
               </div>
 
+              {/* Videos */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Videos <span className="text-zinc-400 font-normal">(optional — shown after images in the gallery)</span>
+                </label>
+                {form.videos.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {form.videos.map((url, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-700/50">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 flex-shrink-0">
+                          Video {index + 1}
+                        </span>
+                        <span className="text-xs text-zinc-500 truncate flex-1">{url}</span>
+                        <button
+                          type="button"
+                          onClick={() => setForm((prev) => ({ ...prev, videos: prev.videos.filter((_, i) => i !== index) }))}
+                          className="text-zinc-400 hover:text-red-500 transition-colors flex-shrink-0"
+                        >✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <label className="px-4 py-2 bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 text-zinc-700 dark:text-white font-medium rounded-lg cursor-pointer transition-colors">
+                    {uploadingVideo ? "Uploading..." : "Upload Video"}
+                    <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowVideoLibrary(true)}
+                    className="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-200 font-medium"
+                  >
+                    Library
+                  </button>
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="button"
@@ -633,9 +713,16 @@ export default function DesignsPage() {
                       {design.category} {design.year && `• ${design.year}`}
                     </p>
                   </div>
-                  <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">
-                    {design.images.length} img
-                  </span>
+                  <div className="flex gap-1">
+                    <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">
+                      {design.images.length} img
+                    </span>
+                    {(design.videos?.length ?? 0) > 0 && (
+                      <span className="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">
+                        {design.videos!.length} vid
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-3 mt-4">
                   <button

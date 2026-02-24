@@ -61,6 +61,7 @@ export default async function PublicLayout({
           basePath={basePath}
           brand={settings.appearance?.navbar_brand}
           logoUrl={settings.appearance?.logo_url}
+          showBrandWithLogo={settings.appearance?.logo_show_brand}
         />
       <main>{children}</main>
       <Footer

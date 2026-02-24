@@ -61,6 +61,7 @@ export interface DesignWork {
   category: string;
   images: string[];
   primary_image: number;
+  videos?: string[];
   client: string | null;
   year: number | null;
   featured: boolean;
@@ -99,12 +100,12 @@ export async function deleteDesign(id: number): Promise<void> {
 }
 
 // File Upload
-export async function uploadFile(file: File): Promise<{ filename: string; url: string }> {
+export async function uploadFile(file: File, resourceType: "auto" | "image" | "video" | "raw" = "auto"): Promise<{ filename: string; url: string }> {
   const token = getToken();
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_BASE_URL}/api/admin/upload`, {
+  const res = await fetch(`${API_BASE_URL}/api/admin/upload?resource_type=${resourceType}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

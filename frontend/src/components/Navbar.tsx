@@ -7,9 +7,10 @@ interface NavbarProps {
   basePath?: string;
   brand?: string;
   logoUrl?: string;
+  showBrandWithLogo?: boolean;
 }
 
-export default function Navbar({ basePath = "", brand, logoUrl }: NavbarProps) {
+export default function Navbar({ basePath = "", brand, logoUrl, showBrandWithLogo }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const homePath = basePath || "/";
@@ -25,13 +26,12 @@ export default function Navbar({ basePath = "", brand, logoUrl }: NavbarProps) {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--app-bg)] backdrop-blur-md border-b border-[var(--app-border)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href={homePath} className="text-xl font-bold text-[var(--app-text)]">
-            {logoUrl ? (
+          <Link href={homePath} className="inline-flex items-center gap-2 text-xl font-bold text-[var(--app-text)]">
+            {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt={brand || "Portfolio"} className="h-8 w-auto" />
-            ) : (
-              brand || "Portfolio"
             )}
+            {(!logoUrl || showBrandWithLogo) && (brand || (!logoUrl && "Portfolio"))}
           </Link>
 
           {/* Desktop Menu */}
