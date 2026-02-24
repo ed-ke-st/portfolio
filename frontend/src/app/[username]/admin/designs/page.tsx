@@ -125,7 +125,7 @@ export default function DesignsPage() {
       category: form.category,
       images: form.images,
       primary_image: form.primary_image,
-      videos: form.videos.length > 0 ? form.videos : null,
+      videos: form.videos.length > 0 ? form.videos : undefined,
       client: form.client || null,
       year: form.year ? parseInt(form.year) : null,
       featured: form.featured,
