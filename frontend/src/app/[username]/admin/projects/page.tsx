@@ -119,7 +119,7 @@ export default function ProjectsPage() {
       tech_stack: form.tech_stack.split(",").map((s) => s.trim()).filter(Boolean),
       image_url: form.image_url || null,
       video_url: form.video_url || null,
-      gallery: galleryItems.length > 0 ? galleryItems : null,
+      gallery: galleryItems.length > 0 ? galleryItems : undefined,
       github_link: form.github_link || null,
       live_url: form.live_url || null,
       featured: form.featured,
