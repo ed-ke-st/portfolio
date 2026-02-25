@@ -10,6 +10,7 @@ declare module "react" {
         React.HTMLAttributes<HTMLElement>,
         HTMLElement
       > & {
+        ref?: React.Ref<HTMLElement>;
         src?: string;
         alt?: string;
         poster?: string;

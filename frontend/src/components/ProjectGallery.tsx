@@ -69,7 +69,7 @@ export default function ProjectGallery({ items, title }: ProjectGalleryProps) {
 
         if (isSide) {
           return (
-            <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+            <div key={index} className="grid grid-cols-2 gap-6 items-center">
               <GalleryMedia item={item} title={title} index={index} />
               <p className="text-sm text-[var(--app-muted)] leading-relaxed">
                 {item.caption}
