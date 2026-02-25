@@ -12,7 +12,14 @@ interface ProjectGalleryProps {
 function GalleryMedia({ item, title, index }: { item: ProjectGalleryItem; title: string; index: number }) {
   // Models have their own wrapper — skip bg/rounded logic
   if (item.type === "model") {
-    return <ModelViewer src={item.url} alt={item.caption || title} />;
+    return (
+      <ModelViewer
+        src={item.url}
+        alt={item.caption || title}
+        orientation={item.model_orientation}
+        zoom={item.model_zoom}
+      />
+    );
   }
 
   const showBg = item.background !== false;

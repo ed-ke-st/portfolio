@@ -5,6 +5,8 @@ export interface ProjectGalleryItem {
   layout?: "full" | "side";
   background?: boolean;
   rounded?: boolean;
+  model_orientation?: string;
+  model_zoom?: string;
 }
 
 export interface Project {

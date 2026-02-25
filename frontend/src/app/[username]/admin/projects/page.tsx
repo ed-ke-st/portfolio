@@ -571,6 +571,46 @@ export default function ProjectsPage() {
                         placeholder="Caption (optional)"
                         className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                       />
+                      {item.type === "model" && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={item.model_orientation || ""}
+                            onChange={(e) => setGalleryItems((prev) => {
+                              const n = [...prev];
+                              const orientation = e.target.value.trim();
+                              const nextItem = { ...n[index] };
+                              if (orientation) {
+                                nextItem.model_orientation = orientation;
+                              } else {
+                                delete nextItem.model_orientation;
+                              }
+                              n[index] = nextItem;
+                              return n;
+                            })}
+                            placeholder="Initial rotation (e.g. 0deg 180deg 0deg)"
+                            className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                          />
+                          <input
+                            type="text"
+                            value={item.model_zoom || ""}
+                            onChange={(e) => setGalleryItems((prev) => {
+                              const n = [...prev];
+                              const zoom = e.target.value.trim();
+                              const nextItem = { ...n[index] };
+                              if (zoom) {
+                                nextItem.model_zoom = zoom;
+                              } else {
+                                delete nextItem.model_zoom;
+                              }
+                              n[index] = nextItem;
+                              return n;
+                            })}
+                            placeholder="Initial zoom (e.g. 100% or 2m)"
+                            className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                          />
+                        </div>
+                      )}
                       {item.url && item.type === "image" && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={item.url} alt="preview" className="h-20 w-auto rounded object-cover border border-zinc-200 dark:border-zinc-600" />

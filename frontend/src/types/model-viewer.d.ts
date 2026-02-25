@@ -13,6 +13,11 @@ declare module "react" {
         src?: string;
         alt?: string;
         poster?: string;
+        autoplay?: string;
+        "animation-name"?: string;
+        orientation?: string;
+        "camera-orbit"?: string;
+        "min-camera-orbit"?: string;
         "auto-rotate"?: string;
         "camera-controls"?: string;
         "shadow-intensity"?: string;
