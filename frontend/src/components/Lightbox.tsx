@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { DesignWork } from "@/types/design";
 import { getLargeUrl, getThumbnailUrl } from "@/lib/image";
+import { stripMarkdown } from "@/lib/text";
 
 interface LightboxProps {
   design: DesignWork;
@@ -98,7 +99,7 @@ export default function Lightbox({ design, onClose }: LightboxProps) {
       {/* Description */}
       {design.description && (
         <div className="px-4 py-2 text-center">
-          <p className="text-white/80 text-sm max-w-2xl mx-auto">{design.description}</p>
+          <p className="text-white/80 text-sm max-w-2xl mx-auto">{stripMarkdown(design.description)}</p>
         </div>
       )}
 

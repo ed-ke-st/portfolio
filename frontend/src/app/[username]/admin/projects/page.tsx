@@ -15,6 +15,8 @@ import { Project, ProjectGalleryItem } from "@/types/project";
 import Cropper, { Area } from "react-easy-crop";
 import IntegrationsRequiredModal from "@/components/IntegrationsRequiredModal";
 import MediaLibraryModal from "@/components/MediaLibraryModal";
+import MarkdownEditor from "@/components/MarkdownEditor";
+import { stripMarkdown } from "@/lib/text";
 
 interface ProjectFormData {
   title: string;
@@ -380,12 +382,12 @@ export default function ProjectsPage() {
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Description
                 </label>
-                <textarea
+                <MarkdownEditor
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(value) => setForm({ ...form, description: value })}
                   rows={3}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                   required
+                  placeholder="Use Markdown: **bold**, ## heading, - list"
                 />
               </div>
 
@@ -784,7 +786,7 @@ export default function ProjectsPage() {
                       {project.title}
                     </p>
                     <p className="text-sm text-zinc-500 truncate max-w-xs">
-                      {project.description}
+                      {stripMarkdown(project.description)}
                     </p>
                   </td>
                   <td className="px-6 py-4">

@@ -4,6 +4,7 @@ import { resolveAppearance } from "@/lib/appearance";
 import { getSiteBasePath } from "@/lib/site-path";
 import { getProjectsForUser } from "@/lib/api";
 import { Project } from "@/types/project";
+import { stripMarkdown } from "@/lib/text";
 
 function formatRange(start?: string, end?: string) {
   if (!start && !end) return "";
@@ -314,7 +315,7 @@ export default async function CVPage({
                 {projects.filter((p) => p.featured).slice(0, 4).map((project) => (
                   <div key={project.id} className="rounded-xl border p-4" style={{ borderColor: cvPalette.border }}>
                     <p className="font-medium">{project.title}</p>
-                    <p className="text-sm mt-1" style={{ color: cvPalette.muted }}>{project.description}</p>
+                    <p className="text-sm mt-1" style={{ color: cvPalette.muted }}>{stripMarkdown(project.description)}</p>
                     <div className="flex gap-3 mt-3 text-sm">
                       {project.live_url && (
                         <a className="underline" href={project.live_url}>Live</a>

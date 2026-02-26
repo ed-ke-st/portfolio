@@ -4,6 +4,7 @@ import { getDesignForUser, parseDesignIdFromPathSegment } from "@/lib/designs";
 import { getSettingsForUser } from "@/lib/settings-api";
 import { resolveAppearance } from "@/lib/appearance";
 import DesignDetailGallery from "@/components/DesignDetailGallery";
+import MarkdownContent from "@/components/MarkdownContent";
 
 export default async function DesignDetailPage({
   params,
@@ -61,7 +62,10 @@ export default async function DesignDetailPage({
             </div>
 
             {design.description && (
-              <p className="mt-5 text-[var(--app-muted)] whitespace-pre-wrap">{design.description}</p>
+              <MarkdownContent
+                content={design.description}
+                className="mt-5 text-[var(--app-muted)]"
+              />
             )}
 
             <DesignDetailGallery design={design} />

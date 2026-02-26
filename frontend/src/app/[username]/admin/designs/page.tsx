@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin-api";
 import IntegrationsRequiredModal from "@/components/IntegrationsRequiredModal";
 import MediaLibraryModal from "@/components/MediaLibraryModal";
+import MarkdownEditor from "@/components/MarkdownEditor";
 
 const CATEGORIES = ["logo", "branding", "ui", "print", "other"];
 
@@ -486,11 +487,11 @@ export default function DesignsPage() {
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Description
                 </label>
-                <textarea
+                <MarkdownEditor
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(value) => setForm({ ...form, description: value })}
                   rows={3}
-                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  placeholder="Use Markdown: **bold**, ## heading, - list"
                 />
               </div>
 

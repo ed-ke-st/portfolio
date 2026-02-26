@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Project } from "@/types/project";
 import { getVideoThumbnailUrl } from "@/lib/image";
 import { buildProjectPathSegment } from "@/lib/projects";
+import { stripMarkdown } from "@/lib/text";
 import Link from "next/link";
 import VideoOverlay from "./VideoOverlay";
 
@@ -74,7 +75,7 @@ export default function ProjectCard({ project, basePath = "" }: ProjectCardProps
           </Link>
 
           <p className="mt-2 text-[var(--app-muted)] text-sm line-clamp-2">
-            {project.description}
+            {stripMarkdown(project.description)}
           </p>
 
           {/* Tech Stack */}

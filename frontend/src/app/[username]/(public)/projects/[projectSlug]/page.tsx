@@ -6,6 +6,7 @@ import { getSiteBasePath } from "@/lib/site-path";
 import { parseProjectIdFromPathSegment } from "@/lib/projects";
 import { getProjectForUser } from "@/lib/api";
 import ProjectGallery from "@/components/ProjectGallery";
+import MarkdownContent from "@/components/MarkdownContent";
 
 export default async function ProjectDetailPage({
   params,
@@ -60,9 +61,10 @@ export default async function ProjectDetailPage({
                   {project.title}
                 </h1>
 
-                <p className="mt-5 text-[var(--app-muted)] whitespace-pre-wrap leading-relaxed">
-                  {project.description}
-                </p>
+                <MarkdownContent
+                  content={project.description}
+                  className="mt-5 text-[var(--app-muted)]"
+                />
 
                 {project.tech_stack.length > 0 && (
                   <div className="mt-8">
