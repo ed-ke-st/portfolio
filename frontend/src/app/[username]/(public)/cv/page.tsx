@@ -88,10 +88,10 @@ export default async function CVPage({
     >
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div
-          className="rounded-2xl border p-6 sm:p-8"
+          className="rounded-2xl border p-6 mt-8 sm:p-8 sm:mt-6"
           style={{ background: cvPalette.card, borderColor: cvPalette.border }}
         >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex flex-col lg:flex-row lg:justify-between gap-6">
             <div className="space-y-2 flex-1">
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--app-muted)]">
                 {cv.title || "Curriculum Vitae"}
