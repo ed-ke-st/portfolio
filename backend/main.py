@@ -74,6 +74,9 @@ def ensure_schema() -> None:
         if "gallery" not in columns:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN gallery JSON"))
+        if "github_releases" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN github_releases BOOLEAN DEFAULT FALSE"))
 
     if "users" in table_names:
         columns = {col["name"] for col in inspector.get_columns("users")}

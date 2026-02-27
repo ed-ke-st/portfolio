@@ -19,5 +19,6 @@ export interface Project {
   gallery?: ProjectGalleryItem[];
   github_link: string | null;
   live_url: string | null;
+  github_releases?: boolean;
   featured: boolean;
 }

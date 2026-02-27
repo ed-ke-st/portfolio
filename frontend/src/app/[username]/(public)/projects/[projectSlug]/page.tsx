@@ -8,6 +8,46 @@ import { getProjectForUser } from "@/lib/api";
 import ProjectGallery from "@/components/ProjectGallery";
 import MarkdownContent from "@/components/MarkdownContent";
 
+interface GitHubAsset {
+  name: string;
+  browser_download_url: string;
+  size: number;
+}
+
+interface GitHubRelease {
+  tag_name: string;
+  name: string;
+  published_at: string;
+  assets: GitHubAsset[];
+}
+
+function parseGitHubRepo(url: string): string | null {
+  const match = url.match(/github\.com\/([^/]+\/[^/?#]+)/);
+  if (!match) return null;
+  return match[1].replace(/\.git$/, "").replace(/\/$/, "");
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function fetchLatestRelease(repo: string): Promise<GitHubRelease | null> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${repo}/releases/latest`,
+      {
+        headers: { Accept: "application/vnd.github+json" },
+        next: { revalidate: 3600 },
+      }
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default async function ProjectDetailPage({
   params,
 }: {
@@ -26,6 +66,12 @@ export default async function ProjectDetailPage({
     const sectionBg = resolveAppearance(settings.appearance).active.sections?.projects || "";
     const basePath = await getSiteBasePath(username);
     const homePath = basePath || "/";
+
+    const githubRepo =
+      project.github_releases && project.github_link
+        ? parseGitHubRepo(project.github_link)
+        : null;
+    const release = githubRepo ? await fetchLatestRelease(githubRepo) : null;
 
     return (
       <div
@@ -112,6 +158,34 @@ export default async function ProjectDetailPage({
                     </a>
                   )}
                 </div>
+
+                {release && release.assets.length > 0 && (
+                  <div className="mt-8">
+                    <div className="flex items-center gap-2 mb-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--app-muted)]">
+                        Downloads
+                      </p>
+                      <span className="px-2 py-0.5 text-xs bg-[var(--app-card)] border border-[var(--app-border)] text-[var(--app-muted)] rounded-full font-mono">
+                        {release.tag_name}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {release.assets.map((asset) => (
+                        <a
+                          key={asset.name}
+                          href={asset.browser_download_url}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[var(--app-border)] hover:border-[var(--app-accent)] transition-colors group"
+                        >
+                          <svg className="w-4 h-4 flex-shrink-0 text-[var(--app-muted)] group-hover:text-[var(--app-accent)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span className="flex-1 text-sm text-[var(--app-text)] truncate">{asset.name}</span>
+                          <span className="text-xs text-[var(--app-muted)] flex-shrink-0">{formatBytes(asset.size)}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

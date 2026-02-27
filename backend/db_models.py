@@ -67,6 +67,7 @@ class Project(Base):
     gallery = Column(JSON, nullable=True)  # List of {type, url, caption}
     github_link = Column(String(500), nullable=True)
     live_url = Column(String(500), nullable=True)
+    github_releases = Column(Boolean, default=False, nullable=True)
     featured = Column(Boolean, default=False)
     order = Column(Integer, default=0)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

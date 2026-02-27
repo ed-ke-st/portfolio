@@ -42,6 +42,7 @@ class ProjectBase(BaseModel):
     gallery: list[dict] | None = None
     github_link: str | None = None
     live_url: str | None = None
+    github_releases: bool | None = None
     featured: bool = False
     order: int = 0
 
@@ -59,6 +60,7 @@ class ProjectUpdate(BaseModel):
     gallery: list[dict] | None = None
     github_link: str | None = None
     live_url: str | None = None
+    github_releases: bool | None = None
     featured: bool | None = None
     order: int | None = None
 

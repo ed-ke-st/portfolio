@@ -26,6 +26,7 @@ interface ProjectFormData {
   video_url: string;
   github_link: string;
   live_url: string;
+  github_releases: boolean;
   featured: boolean;
   order: number;
 }
@@ -38,6 +39,7 @@ const emptyForm: ProjectFormData = {
   video_url: "",
   github_link: "",
   live_url: "",
+  github_releases: false,
   featured: false,
   order: 0,
 };
@@ -92,6 +94,7 @@ export default function ProjectsPage() {
       video_url: project.video_url || "",
       github_link: project.github_link || "",
       live_url: project.live_url || "",
+      github_releases: project.github_releases || false,
       featured: false,
       order: 0,
     });
@@ -124,6 +127,7 @@ export default function ProjectsPage() {
       gallery: galleryItems.length > 0 ? galleryItems : undefined,
       github_link: form.github_link || null,
       live_url: form.live_url || null,
+      github_releases: form.github_releases,
       featured: form.featured,
       order: form.order,
     };
@@ -647,6 +651,17 @@ export default function ProjectsPage() {
                     onChange={(e) => setForm({ ...form, github_link: e.target.value })}
                     className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                   />
+                  {form.github_link && /github\.com\/[^/]+\/[^/]+/.test(form.github_link) && (
+                    <label className="mt-2 flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={form.github_releases}
+                        onChange={(e) => setForm({ ...form, github_releases: e.target.checked })}
+                        className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 accent-blue-600"
+                      />
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">Show latest release downloads</span>
+                    </label>
+                  )}
                 </div>
 
                 <div>
