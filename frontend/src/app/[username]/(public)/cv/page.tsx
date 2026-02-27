@@ -3,7 +3,10 @@ import { getSettingsForUser, AllSettings, SkillCategory } from "@/lib/settings-a
 import { resolveAppearance } from "@/lib/appearance";
 import { getSiteBasePath } from "@/lib/site-path";
 import { getProjectsForUser } from "@/lib/api";
+import { getDesignsForUser, buildDesignPathSegment } from "@/lib/designs";
 import { Project } from "@/types/project";
+import { buildProjectPathSegment } from "@/lib/projects";
+import { DesignWork } from "@/types/design";
 import { stripMarkdown } from "@/lib/text";
 
 function formatRange(start?: string, end?: string) {
@@ -11,6 +14,13 @@ function formatRange(start?: string, end?: string) {
   if (start && end) return `${start} — ${end}`;
   if (start && !end) return `${start} — Present`;
   return end || "";
+}
+
+function resolveSkillBadge(name: string, abbreviation?: string) {
+  const custom = (abbreviation || "").trim();
+  if (custom) return custom;
+  const fallback = name.trim().slice(0, 2);
+  return fallback || "--";
 }
 
 export default async function CVPage({
@@ -21,11 +31,13 @@ export default async function CVPage({
   const { username } = await params;
   let settings: AllSettings = {};
   let projects: Project[] = [];
+  let designs: DesignWork[] = [];
 
   try {
-    [settings, projects] = await Promise.all([
+    [settings, projects, designs] = await Promise.all([
       getSettingsForUser(username),
       getProjectsForUser(username),
+      getDesignsForUser(username),
     ]);
   } catch (error) {
     console.error("Failed to fetch data:", error);
@@ -80,6 +92,14 @@ export default async function CVPage({
   }, {});
   const orderedSkillGroups = skillCategories?.map((c) => c.name).filter((n) => groupedSkills[n]?.length)
     || Object.keys(groupedSkills);
+  const featuredProjects = projects
+    .filter((p) => p.featured)
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+    .slice(0, 4);
+  const featuredDesigns = designs
+    .filter((d) => d.featured)
+    .sort((a, b) => a.order - b.order)
+    .slice(0, 4);
 
   return (
     <div
@@ -228,15 +248,44 @@ export default async function CVPage({
           {skills.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4">Skills</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-10">
                 {orderedSkillGroups.map((group) => (
-                  <div key={group} className="rounded-xl border p-4" style={{ borderColor: cvPalette.border }}>
-                    <p className="text-sm font-semibold mb-2">{group}</p>
-                    <div className="flex flex-wrap gap-2 text-sm" style={{ color: cvPalette.muted }}>
+                  <div key={group}>
+                    <h3 className="text-lg font-semibold mb-4">{group}</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                       {groupedSkills[group].map((skill) => (
-                        <span key={`${group}-${skill.name}`} className="px-2 py-1 rounded-full border" style={{ borderColor: cvPalette.border }}>
-                          {skill.name}
-                        </span>
+                        <div
+                          key={`${group}-${skill.name}`}
+                          className="flex flex-col items-center justify-center p-4 rounded-xl border transition-colors group"
+                          style={{ background: cvPalette.card, borderColor: cvPalette.border }}
+                        >
+                          <div className="w-12 h-12 flex items-center justify-center rounded-lg mb-3 transition-colors" style={{ background: cvPalette.background }}>
+                            <span
+                              className="text-lg font-bold transition-colors"
+                              style={{ color: cvPalette.muted }}
+                            >
+                              {resolveSkillBadge(skill.name, skill.abbreviation)}
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium text-center">
+                            {skill.name}
+                          </span>
+                          <span className="text-xs mt-1" style={{ color: cvPalette.muted }}>
+                            {skill.category}
+                          </span>
+                          <div className="w-full mt-3">
+                            <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: cvPalette.border }}>
+                              <div
+                                className="h-full transition-all"
+                                style={{
+                                  background: cvPalette.accent,
+                                  width: `${typeof skill.level === "number" ? Math.max(0, Math.min(100, skill.level)) : 75}%`,
+                                }}
+                                aria-label={`${skill.name} skill level ${typeof skill.level === "number" ? Math.max(0, Math.min(100, skill.level)) : 75}%`}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -308,24 +357,84 @@ export default async function CVPage({
             </section>
           )}
 
-          {projects.length > 0 && (
+          {(featuredProjects.length > 0 || featuredDesigns.length > 0) && (
             <section>
               <h2 className="text-xl font-semibold mb-4">Selected Projects</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {projects.filter((p) => p.featured).slice(0, 4).map((project) => (
-                  <div key={project.id} className="rounded-xl border p-4" style={{ borderColor: cvPalette.border }}>
-                    <p className="font-medium">{project.title}</p>
-                    <p className="text-sm mt-1" style={{ color: cvPalette.muted }}>{stripMarkdown(project.description)}</p>
-                    <div className="flex gap-3 mt-3 text-sm">
-                      {project.live_url && (
-                        <a className="underline" href={project.live_url}>Live</a>
-                      )}
-                      {project.github_link && (
-                        <a className="underline" href={project.github_link}>GitHub</a>
-                      )}
+              <div className="space-y-8">
+                {featuredProjects.length > 0 && (
+                  <div>
+                    <h3 className="text-base font-semibold mb-3">Development</h3>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {featuredProjects.map((project) => (
+                        <div key={project.id} className="rounded-xl border p-4" style={{ borderColor: cvPalette.border }}>
+                          <Link href={`${basePath}/projects/${buildProjectPathSegment(project)}`} className="block rounded-lg overflow-hidden border mb-3" style={{ borderColor: cvPalette.border }}>
+                            {project.image_url ? (
+                              <img src={project.image_url} alt={project.title} className="w-full aspect-video object-cover" />
+                            ) : (
+                              <div className="w-full aspect-video flex items-center justify-center text-sm" style={{ color: cvPalette.muted }}>
+                                No preview image
+                              </div>
+                            )}
+                          </Link>
+                          <p className="font-medium">{project.title}</p>
+                          <p className="text-sm mt-1" style={{ color: cvPalette.muted }}>{stripMarkdown(project.description)}</p>
+                          <div className="flex gap-3 mt-3 text-sm">
+                            <Link
+                              className="underline"
+                              href={`${basePath}/projects/${buildProjectPathSegment(project)}`}
+                            >
+                              View project
+                            </Link>
+                            {project.live_url && (
+                              <a className="underline" href={project.live_url}>Live</a>
+                            )}
+                            {project.github_link && (
+                              <a className="underline" href={project.github_link}>GitHub</a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {featuredDesigns.length > 0 && (
+                  <div>
+                    <h3 className="text-base font-semibold mb-3">Design</h3>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {featuredDesigns.map((design) => {
+                        const coverImage = design.images[design.primary_image] || design.images[0] || "";
+                        return (
+                          <div key={design.id} className="rounded-xl border p-4" style={{ borderColor: cvPalette.border }}>
+                            <Link href={`${basePath}/designs/${buildDesignPathSegment(design)}`} className="block rounded-lg overflow-hidden border mb-3" style={{ borderColor: cvPalette.border }}>
+                              {coverImage ? (
+                                <img src={coverImage} alt={design.title} className="w-full aspect-video object-cover" />
+                              ) : (
+                                <div className="w-full aspect-video flex items-center justify-center text-sm" style={{ color: cvPalette.muted }}>
+                                  No preview image
+                                </div>
+                              )}
+                            </Link>
+                            <p className="font-medium">{design.title}</p>
+                            {design.description && (
+                              <p className="text-sm mt-1" style={{ color: cvPalette.muted }}>
+                                {stripMarkdown(design.description)}
+                              </p>
+                            )}
+                            <div className="flex gap-3 mt-3 text-sm">
+                              <Link
+                                className="underline"
+                                href={`${basePath}/designs/${buildDesignPathSegment(design)}`}
+                              >
+                                View project
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
           )}

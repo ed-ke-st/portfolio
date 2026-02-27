@@ -95,8 +95,8 @@ export default function ProjectsPage() {
       github_link: project.github_link || "",
       live_url: project.live_url || "",
       github_releases: project.github_releases || false,
-      featured: false,
-      order: 0,
+      featured: project.featured || false,
+      order: project.order || 0,
     });
     setGalleryItems(project.gallery || []);
     setEditingId(project.id);
@@ -672,6 +672,33 @@ export default function ProjectsPage() {
                     type="url"
                     value={form.live_url}
                     onChange={(e) => setForm({ ...form, live_url: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex items-center gap-2 cursor-pointer select-none pt-7">
+                  <input
+                    type="checkbox"
+                    checked={form.featured}
+                    onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+                    className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 accent-blue-600"
+                  />
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                    Feature in portfolio and CV Selected Projects
+                  </span>
+                </label>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.order}
+                    onChange={(e) => setForm({ ...form, order: Number(e.target.value) || 0 })}
                     className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
                   />
                 </div>

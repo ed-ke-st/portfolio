@@ -21,4 +21,5 @@ export interface Project {
   live_url: string | null;
   github_releases?: boolean;
   featured: boolean;
+  order?: number;
 }

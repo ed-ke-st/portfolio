@@ -538,6 +538,33 @@ export default function DesignsPage() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex items-center gap-2 cursor-pointer select-none pt-7">
+                  <input
+                    type="checkbox"
+                    checked={form.featured}
+                    onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+                    className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 accent-purple-600"
+                  />
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                    Feature in design sections
+                  </span>
+                </label>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.order}
+                    onChange={(e) => setForm({ ...form, order: Number(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Images {form.images.length > 0 && <span className="text-zinc-500">(click to set thumbnail, drag to reorder)</span>}
