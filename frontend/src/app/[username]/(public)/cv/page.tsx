@@ -111,7 +111,7 @@ export default async function CVPage({
                 <img
                   src={cv.photo_url}
                   alt={`${heroName} photo`}
-                  className="w-24 h-24 rounded-xl object-cover border"
+                  className="w-24 h-24 object-cover"
                   style={{ borderColor: cvPalette.border }}
                 />
               </div>
