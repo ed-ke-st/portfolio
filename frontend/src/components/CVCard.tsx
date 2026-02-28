@@ -15,7 +15,8 @@ export default function CVCard({ username, cv, appearance, basePath = "" }: CVCa
   if (cv.show_on_home === false) return null;
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const generatedPdfUrl = `${apiBaseUrl}/api/u/${username}/cv/pdf`;
-  const downloadPdfUrl = cv.pdf_url || generatedPdfUrl;
+  const downloadPdfUrl = generatedPdfUrl;
+  const downloadPdfFilename = `${username.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "cv"}.pdf`;
   const isHexColor = (value?: string) => Boolean(value && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value));
   const cvPalette = {
     accent: cv.use_custom_appearance && isHexColor(cv.appearance?.accent) ? cv.appearance!.accent! : appearance?.accent || "#2563eb",
@@ -65,7 +66,7 @@ export default function CVCard({ username, cv, appearance, basePath = "" }: CVCa
               href={downloadPdfUrl}
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-full border"
               style={{ borderColor: cvPalette.border, color: cvPalette.text }}
-              download
+              download={downloadPdfFilename}
             >
               {cv.pdf_url ? "Download PDF" : "Generate PDF"}
             </a>

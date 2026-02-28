@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import timedelta, datetime, timezone
 import shutil
 import tempfile
@@ -652,6 +653,26 @@ async def get_user_cv_pdf(username: str, db: Session = Depends(get_db)):
     hero = hero_setting.value if hero_setting and isinstance(hero_setting.value, dict) else {}
     contact = contact_setting.value if contact_setting and isinstance(contact_setting.value, dict) else {}
     display_name = (hero.get("highlight") or user.username or "").strip()
+    safe_filename_base = re.sub(r"[^a-z0-9]+", "-", (display_name or username).lower()).strip("-") or "cv"
+    download_filename = f"{safe_filename_base}.pdf"
+    custom_pdf_url = (cv.get("pdf_url") or "").strip()
+
+    if custom_pdf_url:
+        try:
+            async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+                custom_resp = await client.get(custom_pdf_url)
+            if custom_resp.status_code < 400 and custom_resp.content:
+                custom_content_type = (custom_resp.headers.get("content-type") or "").lower()
+                is_pdf_like = custom_resp.content.startswith(b"%PDF") or "pdf" in custom_content_type
+                if is_pdf_like:
+                    return Response(
+                        content=custom_resp.content,
+                        media_type="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="{download_filename}"'},
+                    )
+        except Exception:
+            # Fall back to generated PDF below if custom file fetch fails.
+            pass
 
     import fitz  # PyMuPDF
 
@@ -848,7 +869,7 @@ async def get_user_cv_pdf(username: str, db: Session = Depends(get_db)):
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{username}-cv.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{download_filename}"'},
     )
 
 

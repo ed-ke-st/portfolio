@@ -1269,7 +1269,7 @@ export function SettingsPageClient({
                           if (!file) return;
                           setUploadingCvPdf(true);
                           try {
-                            const result = await uploadFile(file);
+                            const result = await uploadFile(file, "raw");
                             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
                             const fileUrl = result.url.startsWith("http") ? result.url : `${apiUrl}${result.url}`;
                             setCv({ ...cv, pdf_url: fileUrl });

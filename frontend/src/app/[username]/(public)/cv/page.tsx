@@ -52,7 +52,8 @@ export default async function CVPage({
   const skillCategories = settings.skill_categories as SkillCategory[] | undefined;
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const generatedPdfUrl = `${apiBaseUrl}/api/u/${username}/cv/pdf`;
-  const downloadPdfUrl = cv?.pdf_url || generatedPdfUrl;
+  const downloadPdfUrl = generatedPdfUrl;
+  const downloadPdfFilename = `${(heroName || username).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "cv"}.pdf`;
   const isHexColor = (value?: string) => Boolean(value && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value));
   const cvPalette = cv?.use_custom_appearance
     ? {
@@ -177,7 +178,7 @@ export default async function CVPage({
                   {cv.website.replace(/^https?:\/\//, "")}
                 </a>
               )}
-              <a className="inline-flex items-center gap-2 underline" href={downloadPdfUrl} download>
+              <a className="inline-flex items-center gap-2 underline" href={downloadPdfUrl} download={downloadPdfFilename}>
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
